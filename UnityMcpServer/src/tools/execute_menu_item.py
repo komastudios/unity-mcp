@@ -1,7 +1,7 @@
 """
 Defines the execute_menu_item tool for running Unity Editor menu commands.
 """
-from typing import Dict, Any
+from typing import Dict, Any, List
 from mcp.server.fastmcp import FastMCP, Context
 from unity_connection import get_unity_connection  # Import unity_connection module
 
@@ -14,6 +14,11 @@ def register_execute_menu_item_tools(mcp: FastMCP):
         menu_path: str,
         action: str = 'execute',
         parameters: Dict[str, Any] = None,
+        # Meta arguments for standard reply contract
+        summary: bool = None,
+        page: int = None,
+        pageSize: int = None,
+        select: List[str] = None
     ) -> Dict[str, Any]:
         """Executes a Unity Editor menu item via its path (e.g., "File/Save Project").
 
@@ -32,8 +37,13 @@ def register_execute_menu_item_tools(mcp: FastMCP):
         # Prepare parameters for the C# handler
         params_dict = {
             "action": action,
-            "menuPath": menu_path,
+            "menu_path": menu_path,  # Unity expects snake_case
             "parameters": parameters if parameters else {},
+            # Meta arguments
+            "summary": summary,
+            "page": page,
+            "pageSize": pageSize,
+            "select": select
         }
 
         # Remove None values

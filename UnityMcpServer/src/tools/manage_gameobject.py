@@ -1,6 +1,11 @@
 from mcp.server.fastmcp import FastMCP, Context
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union
 from unity_connection import get_unity_connection
+from .manage_gameobject_fix import fix_component_properties
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from cache_manager import get_cache
 
 def register_manage_gameobject_tools(mcp: FastMCP):
     """Register all GameObject management tools with the MCP server."""
@@ -9,7 +14,7 @@ def register_manage_gameobject_tools(mcp: FastMCP):
     def manage_gameobject(
         ctx: Context,
         action: str,
-        target: str = None,  # GameObject identifier by name or path
+        target: Union[str, int] = None,  # GameObject identifier by name, path, or ID
         search_method: str = None,
         # --- Combined Parameters for Create/Modify ---
         name: str = None,  # Used for both 'create' (new object name) and 'modify' (rename)
@@ -35,12 +40,17 @@ def register_manage_gameobject_tools(mcp: FastMCP):
         search_inactive: bool = False,
         # -- Component Management Arguments --
         component_name: str = None,
+        # Meta arguments for standard reply contract
+        summary: bool = None,
+        page: int = None,
+        pageSize: int = None,
+        select: List[str] = None
     ) -> Dict[str, Any]:
         """Manages GameObjects: create, modify, delete, find, and component operations.
 
         Args:
             action: Operation (e.g., 'create', 'modify', 'find', 'add_component', 'remove_component', 'set_component_property').
-            target: GameObject identifier (name or path string) for modify/delete/component actions.
+            target: GameObject identifier (name, path string, or numeric ID) for modify/delete/component actions.
             search_method: How to find objects ('by_name', 'by_id', 'by_path', etc.). Used with 'find' and some 'target' lookups.
             name: GameObject name - used for both 'create' (initial name) and 'modify' (rename).
             tag: Tag name - used for both 'create' (initial tag) and 'modify' (change tag).
@@ -67,6 +77,10 @@ def register_manage_gameobject_tools(mcp: FastMCP):
             # --- Early check for attempting to modify a prefab asset ---
             # ----------------------------------------------------------
 
+            # Convert target to string if it's an integer
+            if target is not None and isinstance(target, int):
+                target = str(target)
+            
             # Prepare parameters, removing None values
             params = {
                 "action": action,
@@ -91,9 +105,17 @@ def register_manage_gameobject_tools(mcp: FastMCP):
                 "findAll": find_all,
                 "searchInChildren": search_in_children,
                 "searchInactive": search_inactive,
-                "componentName": component_name
+                "componentName": component_name,
+                # Meta arguments
+                "summary": summary,
+                "page": page,
+                "pageSize": pageSize,
+                "select": select
             }
             params = {k: v for k, v in params.items() if v is not None}
+            
+            # Fix component properties structure for set_component_property action
+            params = fix_component_properties(params)
             
             # --- Handle Prefab Path Logic ---
             if action == "create" and params.get("saveAsPrefab"): # Check if 'saveAsPrefab' is explicitly True in params
@@ -117,9 +139,45 @@ def register_manage_gameobject_tools(mcp: FastMCP):
             response = get_unity_connection().send_command("manage_gameobject", params)
 
             # Check if the response indicates success
-            # If the response is not successful, raise an exception with the error message
             if response.get("success"):
-                return {"success": True, "message": response.get("message", "GameObject operation successful."), "data": response.get("data")}
+                data = response.get("data")
+                
+                # For find action with large results, cache the response
+                if action == "find" and data and find_all:
+                    import json
+                    data_str = json.dumps(data)
+                    size_kb = len(data_str) // 1024
+                    
+                    if size_kb > 50:  # Cache responses larger than 50KB
+                        cache = get_cache()
+                        metadata = {
+                            "tool": "manage_gameobject",
+                            "action": action,
+                            "search_term": search_term,
+                            "total_results": len(data.get("objects", [])) if isinstance(data, dict) else len(data),
+                            "size_kb": size_kb
+                        }
+                        cache_id = cache.add(data, metadata)
+                        
+                        return {
+                            "success": True,
+                            "message": f"Found {metadata['total_results']} objects (Large response cached)",
+                            "cached": True,
+                            "cache_id": cache_id,
+                            "data": {
+                                "total_results": metadata['total_results'],
+                                "size_kb": size_kb,
+                                "cache_id": cache_id,
+                                "usage_hint": "Use fetch_cached_response tool to retrieve data",
+                                "example_filters": [
+                                    f'fetch_cached_response(cache_id="{cache_id}", action="filter", jq_filter=".objects | length")',
+                                    f'fetch_cached_response(cache_id="{cache_id}", action="filter", jq_filter=".objects[] | select(.name | contains(\"Player\"))")',
+                                    f'fetch_cached_response(cache_id="{cache_id}", action="filter", jq_filter=".objects[0:10]")'  # First 10 objects
+                                ]
+                            }
+                        }
+                
+                return {"success": True, "message": response.get("message", "GameObject operation successful."), "data": data}
             else:
                 return {"success": False, "message": response.get("error", "An unknown error occurred during GameObject management.")}
 

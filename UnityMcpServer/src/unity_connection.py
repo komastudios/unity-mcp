@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, Any
 from config import config
+from cache_manager import get_cache
 
 # Configure logging using settings from config
 logging.basicConfig(
@@ -152,7 +153,48 @@ class UnityConnection:
                 logger.error(f"Unity error: {error_message}")
                 raise Exception(error_message)
             
-            return response.get("result", {})
+            # Check if result has the new standard reply contract format
+            result = response.get("result", {})
+            
+            # Check response size for potential caching
+            if isinstance(result, dict) and result.get("success") and result.get("data"):
+                data = result.get("data")
+                result_str = json.dumps(result)
+                estimated_tokens = len(result_str) // 4
+                
+                # If response is very large, cache it and return a reference
+                if estimated_tokens > 15000:
+                    cache = get_cache()
+                    metadata = {
+                        "tool": command_type,
+                        "params": params,
+                        "size_bytes": len(result_str.encode('utf-8')),
+                        "estimated_tokens": estimated_tokens
+                    }
+                    cache_id = cache.add(data, metadata)
+                    
+                    logger.info(f"Large response cached with ID: {cache_id} (tokens: {estimated_tokens})")
+                    
+                    # Return a modified result that includes the cache ID
+                    return {
+                        "success": True,
+                        "cached": True,
+                        "cache_id": cache_id,
+                        "message": f"Response too large ({estimated_tokens} tokens). Data has been cached.",
+                        "data": {
+                            "cache_id": cache_id,
+                            "size_kb": len(result_str) // 1024,
+                            "estimated_tokens": estimated_tokens,
+                            "usage_hint": "Use fetch_cached_response tool to retrieve the data"
+                        }
+                    }
+            
+            if isinstance(result, dict) and "success" in result and "summary" in result:
+                # This is the new standard reply format, return it as-is
+                return result
+            else:
+                # Legacy format, wrap in backward-compatible structure
+                return result
         except Exception as e:
             logger.error(f"Communication error with Unity: {str(e)}")
             self.sock = None
