@@ -380,6 +380,7 @@ namespace UnityMcpBridge.Editor
                     "manage_asset" => ManageAsset.HandleCommand(paramsObject),
                     "read_console" => ReadConsole.HandleCommand(paramsObject),
                     "execute_menu_item" => ExecuteMenuItem.HandleCommand(paramsObject),
+                    "trigger_domain_reload" => TriggerDomainReload.HandleCommand(paramsObject),
                     _ => throw new ArgumentException(
                         $"Unknown or unsupported command type: {command.type}"
                     ),
