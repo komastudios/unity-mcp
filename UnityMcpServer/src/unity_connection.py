@@ -25,6 +25,9 @@ class UnityConnection:
         if self.sock:
             return True
         try:
+            # TODO: Add TLS encryption for secure communication between Python MCP server and Unity C# bridge
+            # Currently using unencrypted TCP socket which exposes commands and data on localhost
+            # Consider using ssl.wrap_socket() with self-signed certificates for local security
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host, self.port))
             logger.info(f"Connected to Unity at {self.host}:{self.port}")

@@ -74,6 +74,10 @@ namespace UnityMcpBridge.Editor
 
             try
             {
+                // TODO: Add TLS encryption for secure communication between Python MCP server and Unity C# bridge
+                // Currently using unencrypted TCP listener which exposes commands and data on localhost:6400
+                // Consider using SslStream with self-signed certificates for local security
+                // This is important since the port accepts commands that can modify Unity project files
                 listener = new TcpListener(IPAddress.Loopback, unityPort);
                 listener.Start();
                 isRunning = true;
