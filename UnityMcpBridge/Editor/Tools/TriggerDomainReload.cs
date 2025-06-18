@@ -16,11 +16,13 @@ namespace UnityMcpBridge.Editor.Tools
         private static readonly string SESSION_ID;
         private const string SESSION_ID_KEY = "UnityMcpBridge.SessionId";
         private const string JOBS_KEY_PREFIX = "UnityMcpBridge.DomainReloadJob.";
+        private const string ACTIVE_JOBS_KEY = "UnityMcpBridge.ActiveJobIds";
         
         // In-memory state (lost on domain reload)
         private static readonly object lockObj = new object();
         private static Dictionary<string, DomainReloadJob> activeJobs = new Dictionary<string, DomainReloadJob>();
         private static bool handlersRegistered = false;
+        private static bool wasRestoredAfterReload = false;
         
         // Static constructor - runs when domain loads
         static TriggerDomainReload()
@@ -32,6 +34,7 @@ namespace UnityMcpBridge.Editor.Tools
             {
                 // We've been reloaded - restore state
                 SESSION_ID = existingSessionId;
+                wasRestoredAfterReload = true;
                 Debug.Log($"[TriggerDomainReload] Restored after domain reload. Session: {SESSION_ID}");
                 RestoreJobsFromSessionState();
             }
@@ -122,6 +125,7 @@ namespace UnityMcpBridge.Editor.Tools
                 lock (lockObj)
                 {
                     activeJobs[newJobId] = job;
+                    SaveActiveJobIds();
                 }
                 SaveJobToSessionState(job);
                 
@@ -155,6 +159,7 @@ namespace UnityMcpBridge.Editor.Tools
                         lock (lockObj)
                         {
                             activeJobs.Remove(newJobId);
+                            SaveActiveJobIds();
                         }
                         
                         return new
@@ -246,6 +251,16 @@ namespace UnityMcpBridge.Editor.Tools
                     try
                     {
                         job = JsonConvert.DeserializeObject<DomainReloadJob>(jobJson);
+                        
+                        // Add it back to active jobs if it's still running
+                        if (job != null && job.status == "running")
+                        {
+                            lock (lockObj)
+                            {
+                                activeJobs[jobId] = job;
+                                SaveActiveJobIds();
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -300,6 +315,7 @@ namespace UnityMcpBridge.Editor.Tools
                 lock (lockObj)
                 {
                     activeJobs.Remove(jobId);
+                    SaveActiveJobIds();
                 }
                 // Keep in SessionState for a while in case of re-polling
             }
@@ -379,15 +395,90 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
         
+        private static void SaveActiveJobIds()
+        {
+            try
+            {
+                var jobIds = new List<string>();
+                foreach (var jobId in activeJobs.Keys)
+                {
+                    jobIds.Add(jobId);
+                }
+                string jobIdsJson = JsonConvert.SerializeObject(jobIds);
+                SessionState.SetString(ACTIVE_JOBS_KEY, jobIdsJson);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to save active job IDs: {ex.Message}");
+            }
+        }
+        
         private static void RestoreJobsFromSessionState()
         {
-            // Look for any persisted jobs
-            var restoredCount = 0;
-            var keys = new List<string>();
-            
-            // SessionState doesn't provide enumeration, so we'll have to clean up completed jobs periodically
-            // For now, we'll just log that we've been restored
-            Debug.Log($"[TriggerDomainReload] Session restored. Jobs will be loaded on demand.");
+            try
+            {
+                // Get the list of active job IDs
+                string jobIdsJson = SessionState.GetString(ACTIVE_JOBS_KEY, null);
+                if (string.IsNullOrEmpty(jobIdsJson))
+                {
+                    Debug.Log("[TriggerDomainReload] No active jobs to restore.");
+                    return;
+                }
+                
+                var jobIds = JsonConvert.DeserializeObject<List<string>>(jobIdsJson);
+                var restoredCount = 0;
+                var completedCount = 0;
+                
+                foreach (var jobId in jobIds)
+                {
+                    string jobJson = SessionState.GetString(JOBS_KEY_PREFIX + jobId, null);
+                    if (!string.IsNullOrEmpty(jobJson))
+                    {
+                        try
+                        {
+                            var job = JsonConvert.DeserializeObject<DomainReloadJob>(jobJson);
+                            if (job != null)
+                            {
+                                // Check if this job likely caused the domain reload
+                                if (job.status == "running" && 
+                                    (job.action == "domain_reload" || job.action == "compile_and_reload"))
+                                {
+                                    // Mark it as completed since we've successfully reloaded
+                                    job.status = "completed";
+                                    job.compilationSucceeded = true;
+                                    job.message = "Domain reload completed successfully";
+                                    job.compilationLogs.Add($"[{DateTime.Now:HH:mm:ss}] Domain reloaded - job completed");
+                                    SaveJobToSessionState(job);
+                                    completedCount++;
+                                    Debug.Log($"[TriggerDomainReload] Job {job.jobId} marked as completed after domain reload");
+                                }
+                                else if (job.status == "running")
+                                {
+                                    // Other running jobs should be restored to continue processing
+                                    lock (lockObj)
+                                    {
+                                        activeJobs[job.jobId] = job;
+                                        restoredCount++;
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError($"Failed to restore job {jobId}: {ex.Message}");
+                        }
+                    }
+                }
+                
+                Debug.Log($"[TriggerDomainReload] Restored {restoredCount} running jobs, marked {completedCount} as completed after domain reload.");
+                
+                // Update the active job IDs list
+                SaveActiveJobIds();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to restore jobs from SessionState: {ex.Message}");
+            }
         }
         
         private static void RegisterCompilationHandlers()
@@ -396,6 +487,14 @@ namespace UnityMcpBridge.Editor.Tools
             CompilationPipeline.compilationFinished += OnCompilationFinished;
             CompilationPipeline.assemblyCompilationFinished += OnAssemblyCompilationFinished;
             Application.logMessageReceived += OnLogMessageReceived;
+        }
+        
+        private static void UnregisterCompilationHandlers()
+        {
+            CompilationPipeline.compilationStarted -= OnCompilationStarted;
+            CompilationPipeline.compilationFinished -= OnCompilationFinished;
+            CompilationPipeline.assemblyCompilationFinished -= OnAssemblyCompilationFinished;
+            Application.logMessageReceived -= OnLogMessageReceived;
         }
         
         private static void OnCompilationStarted(object obj)
