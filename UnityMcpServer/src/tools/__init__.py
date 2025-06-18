@@ -8,6 +8,7 @@ from .execute_menu_item import register_execute_menu_item_tools
 from .take_screenshot import register_take_screenshot_tools
 from .fetch_cached_response import register_fetch_cached_response_tools
 from .trigger_domain_reload import register_domain_reload_tools
+from .unity_diagnostics import register_unity_diagnostics_tools
 
 def register_all_tools(mcp):
     """Register all refactored tools with the MCP server."""
@@ -22,4 +23,5 @@ def register_all_tools(mcp):
     register_take_screenshot_tools(mcp)
     register_fetch_cached_response_tools(mcp)
     register_domain_reload_tools(mcp)
+    register_unity_diagnostics_tools(mcp)
     print("Unity MCP Server tool registration complete.")
