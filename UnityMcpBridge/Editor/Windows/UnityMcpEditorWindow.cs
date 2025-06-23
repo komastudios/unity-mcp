@@ -16,9 +16,10 @@ namespace UnityMcpBridge.Editor.Windows
         private Vector2 scrollPosition;
         private string pythonServerInstallationStatus = "Not Installed";
         private Color pythonServerInstallationStatusColor = Color.red;
-        private const int unityPort = 6400; // Hardcoded Unity port
-        private const int mcpPort = 6500; // Hardcoded MCP port
         private readonly McpClients mcpClients = new();
+        private bool showPortSettings = false;
+        private string unityPortInput;
+        private string mcpPortInput;
 
         [MenuItem("Window/Unity MCP")]
         public static void ShowWindow()
@@ -35,6 +36,10 @@ namespace UnityMcpBridge.Editor.Windows
             {
                 CheckMcpConfiguration(mcpClient);
             }
+            
+            // Initialize port input fields with current values
+            unityPortInput = McpSettings.Instance.UnityPort.ToString();
+            mcpPortInput = McpSettings.Instance.McpPort.ToString();
         }
 
         private Color GetStatusColor(McpStatus status)
@@ -229,8 +234,81 @@ namespace UnityMcpBridge.Editor.Windows
             EditorGUILayout.LabelField("      " + pythonServerInstallationStatus);
             EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.LabelField($"Unity Port: {unityPort}");
-            EditorGUILayout.LabelField($"MCP Port: {mcpPort}");
+            EditorGUILayout.LabelField($"Unity Port: {McpSettings.Instance.UnityPort}");
+            EditorGUILayout.LabelField($"MCP Port: {McpSettings.Instance.McpPort}");
+            
+            // Port Settings Section
+            EditorGUILayout.BeginHorizontal();
+            showPortSettings = EditorGUILayout.Foldout(showPortSettings, "Port Settings", true);
+            EditorGUILayout.EndHorizontal();
+            
+            if (showPortSettings)
+            {
+                EditorGUI.indentLevel++;
+                
+                // Unity Port
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Unity Port:", GUILayout.Width(80));
+                unityPortInput = EditorGUILayout.TextField(unityPortInput, GUILayout.Width(60));
+                if (GUILayout.Button("Set", GUILayout.Width(40)))
+                {
+                    if (int.TryParse(unityPortInput, out int newPort) && newPort > 0 && newPort <= 65535)
+                    {
+                        if (isUnityBridgeRunning)
+                        {
+                            EditorUtility.DisplayDialog("Port Change", "Please stop the Unity Bridge before changing ports.", "OK");
+                        }
+                        else
+                        {
+                            McpSettings.Instance.UnityPort = newPort;
+                            Debug.Log($"Unity port changed to {newPort}");
+                        }
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Invalid Port", "Please enter a valid port number (1-65535).", "OK");
+                        unityPortInput = McpSettings.Instance.UnityPort.ToString();
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+                
+                // MCP Port
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("MCP Port:", GUILayout.Width(80));
+                mcpPortInput = EditorGUILayout.TextField(mcpPortInput, GUILayout.Width(60));
+                if (GUILayout.Button("Set", GUILayout.Width(40)))
+                {
+                    if (int.TryParse(mcpPortInput, out int newPort) && newPort > 0 && newPort <= 65535)
+                    {
+                        McpSettings.Instance.McpPort = newPort;
+                        Debug.Log($"MCP port changed to {newPort}");
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Invalid Port", "Please enter a valid port number (1-65535).", "OK");
+                        mcpPortInput = McpSettings.Instance.McpPort.ToString();
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+                
+                // Reset to defaults button
+                if (GUILayout.Button("Reset to Defaults", GUILayout.Width(120)))
+                {
+                    if (isUnityBridgeRunning)
+                    {
+                        EditorUtility.DisplayDialog("Port Change", "Please stop the Unity Bridge before resetting ports.", "OK");
+                    }
+                    else
+                    {
+                        McpSettings.Instance.ResetToDefaults();
+                        unityPortInput = McpSettings.Instance.UnityPort.ToString();
+                        mcpPortInput = McpSettings.Instance.McpPort.ToString();
+                        Debug.Log("Ports reset to defaults (Unity: 6400, MCP: 6500)");
+                    }
+                }
+                
+                EditorGUI.indentLevel--;
+            }
             EditorGUILayout.HelpBox(
                 "Your MCP client (e.g. Cursor or Claude Desktop) will start the server automatically when you start it.",
                 MessageType.Info
@@ -243,7 +321,7 @@ namespace UnityMcpBridge.Editor.Windows
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUILayout.LabelField("Unity MCP Bridge", EditorStyles.boldLabel);
             EditorGUILayout.LabelField($"Status: {(isUnityBridgeRunning ? "Running" : "Stopped")}");
-            EditorGUILayout.LabelField($"Port: {unityPort}");
+            EditorGUILayout.LabelField($"Port: {McpSettings.Instance.UnityPort}");
 
             if (GUILayout.Button(isUnityBridgeRunning ? "Stop Bridge" : "Start Bridge"))
             {
@@ -280,7 +358,12 @@ namespace UnityMcpBridge.Editor.Windows
             McpConfigServer unityMCPConfig = new()
             {
                 command = "uv",
-                args = new[] { "--directory", pythonDir, "run", "server.py" },
+                args = new[] { 
+                    "--directory", pythonDir, 
+                    "run", "server.py",
+                    "--unity-port", McpSettings.Instance.UnityPort.ToString(),
+                    "--mcp-port", McpSettings.Instance.McpPort.ToString()
+                },
             };
 
             JsonSerializerSettings jsonSettings = new() { Formatting = Formatting.Indented };
@@ -343,7 +426,12 @@ namespace UnityMcpBridge.Editor.Windows
                     unityMCP = new McpConfigServer
                     {
                         command = "uv",
-                        args = new[] { "--directory", pythonDir, "run", "server.py" },
+                        args = new[] { 
+                            "--directory", pythonDir, 
+                            "run", "server.py",
+                            "--unity-port", McpSettings.Instance.UnityPort.ToString(),
+                            "--mcp-port", McpSettings.Instance.McpPort.ToString()
+                        },
                     },
                 },
             };
@@ -502,7 +590,12 @@ namespace UnityMcpBridge.Editor.Windows
                     unityMCP = new McpConfigServer
                     {
                         command = "uv",
-                        args = new[] { "--directory", pythonDir, "run", "server.py" },
+                        args = new[] { 
+                            "--directory", pythonDir, 
+                            "run", "server.py",
+                            "--unity-port", McpSettings.Instance.UnityPort.ToString(),
+                            "--mcp-port", McpSettings.Instance.McpPort.ToString()
+                        },
                     },
                 },
             };

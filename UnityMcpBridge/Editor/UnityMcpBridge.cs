@@ -25,7 +25,7 @@ namespace UnityMcpBridge.Editor
             string,
             (string commandJson, TaskCompletionSource<string> tcs)
         > commandQueue = new();
-        private static readonly int unityPort = 6400; // Hardcoded port
+        private static int UnityPort => McpSettings.Instance.UnityPort;
 
         public static bool IsRunning => isRunning;
 
@@ -78,10 +78,10 @@ namespace UnityMcpBridge.Editor
                 // Currently using unencrypted TCP listener which exposes commands and data on localhost:6400
                 // Consider using SslStream with self-signed certificates for local security
                 // This is important since the port accepts commands that can modify Unity project files
-                listener = new TcpListener(IPAddress.Loopback, unityPort);
+                listener = new TcpListener(IPAddress.Loopback, UnityPort);
                 listener.Start();
                 isRunning = true;
-                Debug.Log($"UnityMcpBridge started on port {unityPort}.");
+                Debug.Log($"UnityMcpBridge started on port {UnityPort}.");
                 // Assuming ListenerLoop and ProcessCommands are defined elsewhere
                 Task.Run(ListenerLoop);
                 EditorApplication.update += ProcessCommands;
@@ -91,7 +91,7 @@ namespace UnityMcpBridge.Editor
                 if (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
                 {
                     Debug.LogError(
-                        $"Port {unityPort} is already in use. Ensure no other instances are running or change the port."
+                        $"Port {UnityPort} is already in use. Ensure no other instances are running or change the port."
                     );
                 }
                 else

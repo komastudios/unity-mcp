@@ -20,7 +20,7 @@ A Model Context Protocol (MCP) server that enables AI assistants to interact wit
    cd Tools/UnityMcpServer
    pip install -r requirements.txt
    ```
-3. The Unity Editor will automatically start the TCP bridge on port 6400 when loaded
+3. The Unity Editor will automatically start the TCP bridge on the configured port when loaded (default: 6400)
 
 ## Available Tools
 
@@ -307,8 +307,9 @@ If you encounter "response exceeds maximum allowed tokens" errors:
 
 ### Connection Issues
 - Ensure Unity Editor is running and the MCP Bridge is loaded
-- Check Unity console for "[MCP] Listening on port 6400" message
-- Verify no firewall blocking local TCP port 6400
+- Check Unity console for "[MCP] Listening on port <configured-port>" message
+- Verify no firewall blocking the configured TCP port (default: 6400)
+- Port configuration can be changed in Unity via Window > Unity MCP > Port Settings
 
 ### Cache Management
 - Cached responses expire after 30 minutes
@@ -319,11 +320,11 @@ If you encounter "response exceeds maximum allowed tokens" errors:
 
 ```
 Unity Editor
-    ↓ (TCP Port 6400)
+    ↓ (TCP Port - configurable, default: 6400)
 Unity MCP Bridge (C#)
     ↓ (JSON Protocol)
 Unity MCP Server (Python)
-    ↓ (MCP Protocol)
+    ↓ (MCP Protocol - configurable, default: 6500)
 AI Assistant
 ```
 

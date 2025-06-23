@@ -11,7 +11,7 @@ This repository contains:
 ## Architecture
 
 ```
-Claude Code <--(MCP Protocol)--> Unity MCP Server <--(HTTP)--> Unity Editor (with UnityMcpBridge)
+Claude Code <--(MCP Protocol)--> Unity MCP Server <--(TCP)--> Unity Editor (with UnityMcpBridge)
 ```
 
 ## Setup Instructions
@@ -33,7 +33,7 @@ Claude Code <--(MCP Protocol)--> Unity MCP Server <--(HTTP)--> Unity Editor (wit
 ### Step 2: Configure Unity Editor
 
 1. In Unity, go to Unity MCP → Open MCP Window
-2. Start the MCP Bridge server (it will listen on port 50001 by default)
+2. Start the MCP Bridge server (it will listen on the configured Unity port, default: 6400)
 3. Keep Unity Editor open during your Claude Code session
 
 ### Step 3: Set Up MCP Server
@@ -46,10 +46,11 @@ If both Claude Code and Unity are running on the same Windows machine:
 
 ```bash
 # Example: If this repo is cloned to C:\Projects\unity-mcp
+# Note: Add port arguments if using non-default ports
 claude mcp add unityMCP uv.exe -- --directory "C:\\Projects\\unity-mcp\\UnityMcpServer\\src" run server.py
 
-# Or if cloned to D:\Development\unity-mcp
-claude mcp add unityMCP uv.exe -- --directory "D:\\Development\\unity-mcp\\UnityMcpServer\\src" run server.py
+# Or with custom ports (e.g., Unity: 6405, MCP: 6505)
+claude mcp add unityMCP uv.exe -- --directory "C:\\Projects\\unity-mcp\\UnityMcpServer\\src" run server.py --unity-port 6405 --mcp-port 6505
 ```
 
 #### Scenario B: Unity on Windows Host, Claude Code in WSL
@@ -67,13 +68,13 @@ When Unity runs on Windows but Claude Code runs in WSL:
    # Example: If repo is at C:\Projects\unity-mcp on Windows
    claude mcp add unityMCP uv -- --directory "/mnt/c/Projects/unity-mcp/UnityMcpServer/src" run server.py
    
-   # Or if at D:\Development\unity-mcp on Windows
-   claude mcp add unityMCP uv -- --directory "/mnt/d/Development/unity-mcp/UnityMcpServer/src" run server.py
+   # Or with custom ports (e.g., Unity: 6405, MCP: 6505)
+   claude mcp add unityMCP uv -- --directory "/mnt/c/Projects/unity-mcp/UnityMcpServer/src" run server.py --unity-port 6405 --mcp-port 6505
    ```
 
 3. Configure network access (if needed):
    - The MCP server needs to reach Unity Editor on the Windows host
-   - By default, it connects to `localhost:50001`
+   - By default, it connects to `localhost:<unity-port>` (default: 6400)
    - If connection fails, you may need to use the Windows host IP:
      ```bash
      # Find Windows host IP from WSL
@@ -110,7 +111,7 @@ The Unity MCP Server provides these tools to Claude Code:
 ### Connection Issues
 
 1. **Check Unity MCP Window**: Ensure the server is running (green status)
-2. **Check Firewall**: Port 50001 must be accessible
+2. **Check Firewall**: The configured Unity port must be accessible (default: 6400)
 3. **WSL Networking**: Use `ping` from WSL to test connectivity to Windows host
 
 ### Path Issues

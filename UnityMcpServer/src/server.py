@@ -1,5 +1,6 @@
 from mcp.server.fastmcp import FastMCP, Context, Image
 import logging
+import argparse
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Dict, Any, List
@@ -98,4 +99,19 @@ def asset_creation_strategy() -> str:
 
 # Run the server
 if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Unity MCP Server')
+    parser.add_argument('--unity-port', type=int, help='Unity Bridge port')
+    parser.add_argument('--mcp-port', type=int, help='MCP Server port')
+    args = parser.parse_args()
+    
+    # Update config with command line arguments if provided
+    if args.unity_port:
+        config.unity_port = args.unity_port
+        logger.info(f"Using Unity port: {config.unity_port}")
+    
+    if args.mcp_port:
+        config.mcp_port = args.mcp_port
+        logger.info(f"Using MCP port: {config.mcp_port}")
+    
     mcp.run(transport='stdio')
