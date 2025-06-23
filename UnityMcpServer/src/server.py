@@ -103,6 +103,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Unity MCP Server')
     parser.add_argument('--unity-port', type=int, help='Unity Bridge port')
     parser.add_argument('--mcp-port', type=int, help='MCP Server port')
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging')
     args = parser.parse_args()
     
     # Update config with command line arguments if provided
@@ -113,5 +114,11 @@ if __name__ == "__main__":
     if args.mcp_port:
         config.mcp_port = args.mcp_port
         logger.info(f"Using MCP port: {config.mcp_port}")
+    
+    # Set logging level based on debug flag
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled")
     
     mcp.run(transport='stdio')

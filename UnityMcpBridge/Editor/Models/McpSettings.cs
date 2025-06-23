@@ -18,6 +18,9 @@ namespace UnityMcpBridge.Editor.Models
         [SerializeField]
         private int mcpPort = 6500;
         
+        [SerializeField]
+        private bool debugLogging = false;
+        
         public int UnityPort
         {
             get => unityPort;
@@ -39,6 +42,19 @@ namespace UnityMcpBridge.Editor.Models
                 if (mcpPort != value)
                 {
                     mcpPort = value;
+                    Save();
+                }
+            }
+        }
+        
+        public bool DebugLogging
+        {
+            get => debugLogging;
+            set
+            {
+                if (debugLogging != value)
+                {
+                    debugLogging = value;
                     Save();
                 }
             }
@@ -106,6 +122,7 @@ namespace UnityMcpBridge.Editor.Models
         {
             unityPort = 6400;
             mcpPort = 6500;
+            debugLogging = false;
             Save();
         }
     }

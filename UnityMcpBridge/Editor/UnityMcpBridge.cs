@@ -64,7 +64,7 @@ namespace UnityMcpBridge.Editor
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to ensure UnityMcpServer is installed: {ex.Message}");
+                McpLogger.LogError($"Failed to ensure UnityMcpServer is installed: {ex.Message}");
             }
 
             if (isRunning)
@@ -81,9 +81,9 @@ namespace UnityMcpBridge.Editor
                 listener = new TcpListener(IPAddress.Loopback, UnityPort);
                 listener.Start();
                 isRunning = true;
-                Debug.Log($"UnityMcpBridge started on port {UnityPort}.");
-                Debug.Log($"Listening on: {IPAddress.Loopback}:{UnityPort}");
-                Debug.Log($"Waiting for MCP server connections...");
+                McpLogger.LogInfo($"UnityMcpBridge started on port {UnityPort}.");
+                McpLogger.LogInfo($"Listening on: {IPAddress.Loopback}:{UnityPort}");
+                McpLogger.Log($"Waiting for MCP server connections...");
                 // Assuming ListenerLoop and ProcessCommands are defined elsewhere
                 Task.Run(ListenerLoop);
                 EditorApplication.update += ProcessCommands;
@@ -92,13 +92,13 @@ namespace UnityMcpBridge.Editor
             {
                 if (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
                 {
-                    Debug.LogError(
+                    McpLogger.LogError(
                         $"Port {UnityPort} is already in use. Ensure no other instances are running or change the port."
                     );
                 }
                 else
                 {
-                    Debug.LogError($"Failed to start TCP listener: {ex.Message}");
+                    McpLogger.LogError($"Failed to start TCP listener: {ex.Message}");
                 }
             }
         }
@@ -116,11 +116,11 @@ namespace UnityMcpBridge.Editor
                 listener = null;
                 isRunning = false;
                 EditorApplication.update -= ProcessCommands;
-                Debug.Log("UnityMcpBridge stopped.");
+                McpLogger.LogInfo("UnityMcpBridge stopped.");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Error stopping UnityMcpBridge: {ex.Message}");
+                McpLogger.LogError($"Error stopping UnityMcpBridge: {ex.Message}");
             }
         }
 
@@ -131,7 +131,7 @@ namespace UnityMcpBridge.Editor
                 try
                 {
                     TcpClient client = await listener.AcceptTcpClientAsync();
-                    Debug.Log($"Accepted connection from: {client.Client.RemoteEndPoint}");
+                    McpLogger.LogInfo($"Accepted connection from: {client.Client.RemoteEndPoint}");
                     
                     // Enable basic socket keepalive
                     client.Client.SetSocketOption(
@@ -150,7 +150,7 @@ namespace UnityMcpBridge.Editor
                 {
                     if (isRunning)
                     {
-                        Debug.LogError($"Listener error: {ex.Message}");
+                        McpLogger.LogError($"Listener error: {ex.Message}");
                     }
                 }
             }
@@ -203,7 +203,7 @@ namespace UnityMcpBridge.Editor
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError($"Client handler error: {ex.Message}");
+                        McpLogger.LogError($"Client handler error: {ex.Message}");
                         break;
                     }
                 }
@@ -293,7 +293,7 @@ namespace UnityMcpBridge.Editor
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError($"Error processing command: {ex.Message}\n{ex.StackTrace}");
+                        McpLogger.LogError($"Error processing command: {ex.Message}\n{ex.StackTrace}");
 
                         var response = new
                         {
@@ -401,7 +401,7 @@ namespace UnityMcpBridge.Editor
             catch (Exception ex)
             {
                 // Log the detailed error in Unity for debugging
-                Debug.LogError(
+                McpLogger.LogError(
                     $"Error executing command '{command?.type ?? "Unknown"}': {ex.Message}\n{ex.StackTrace}"
                 );
 

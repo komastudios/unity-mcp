@@ -45,7 +45,7 @@ namespace UnityMcpBridge.Editor.Helpers
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to ensure server installation: {ex.Message}");
+                McpLogger.LogError($"Failed to ensure server installation: {ex.Message}");
             }
         }
 

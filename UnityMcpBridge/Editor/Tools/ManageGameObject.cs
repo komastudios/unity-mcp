@@ -8,7 +8,7 @@ using UnityEditor.SceneManagement;
 using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityMcpBridge.Editor.Helpers; // For Response class
+using UnityMcpBridge.Editor.Helpers; // For Response class and McpLogger
 
 namespace UnityMcpBridge.Editor.Tools
 {
@@ -48,8 +48,8 @@ namespace UnityMcpBridge.Editor.Tools
                 // Allow 'create' (instantiate), 'find' (?), 'get_components' (?)
                 if (action == "modify" || action == "set_component_property")
                 {
-                    Debug.Log(
-                        $"[ManageGameObject->ManageAsset] Redirecting action '{action}' for prefab '{targetPath}' to ManageAsset."
+                    McpLogger.LogWithContext("ManageGameObject->ManageAsset", 
+                        $"Redirecting action '{action}' for prefab '{targetPath}' to ManageAsset."
                     );
                     // Prepare params for ManageAsset.ModifyAsset
                     JObject assetParams = new JObject();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -240,6 +241,17 @@ namespace UnityMcpBridge.Editor.Windows
             EditorGUILayout.LabelField($"Unity Port: {McpSettings.Instance.UnityPort}");
             EditorGUILayout.LabelField($"MCP Port: {McpSettings.Instance.McpPort}");
             
+            // Debug Logging Toggle
+            EditorGUILayout.Space(5);
+            EditorGUILayout.BeginHorizontal();
+            bool newDebugLogging = EditorGUILayout.Toggle("Debug Logging", McpSettings.Instance.DebugLogging);
+            if (newDebugLogging != McpSettings.Instance.DebugLogging)
+            {
+                McpSettings.Instance.DebugLogging = newDebugLogging;
+                McpLogger.LogInfo($"Debug logging {(newDebugLogging ? "enabled" : "disabled")}");
+            }
+            EditorGUILayout.EndHorizontal();
+            
             // Port Settings Section
             EditorGUILayout.BeginHorizontal();
             showPortSettings = EditorGUILayout.Foldout(showPortSettings, "Port Settings", true);
@@ -264,7 +276,7 @@ namespace UnityMcpBridge.Editor.Windows
                         else
                         {
                             McpSettings.Instance.UnityPort = newPort;
-                            Debug.Log($"Unity port changed to {newPort}");
+                            McpLogger.LogInfo($"Unity port changed to {newPort}");
                         }
                     }
                     else
@@ -284,7 +296,7 @@ namespace UnityMcpBridge.Editor.Windows
                     if (int.TryParse(mcpPortInput, out int newPort) && newPort > 0 && newPort <= 65535)
                     {
                         McpSettings.Instance.McpPort = newPort;
-                        Debug.Log($"MCP port changed to {newPort}");
+                        McpLogger.LogInfo($"MCP port changed to {newPort}");
                     }
                     else
                     {
@@ -306,7 +318,7 @@ namespace UnityMcpBridge.Editor.Windows
                         McpSettings.Instance.ResetToDefaults();
                         unityPortInput = McpSettings.Instance.UnityPort.ToString();
                         mcpPortInput = McpSettings.Instance.McpPort.ToString();
-                        Debug.Log("Ports reset to defaults (Unity: 6400, MCP: 6500)");
+                        McpLogger.LogInfo("Ports reset to defaults (Unity: 6400, MCP: 6500)");
                     }
                 }
                 
@@ -363,15 +375,25 @@ namespace UnityMcpBridge.Editor.Windows
         private string WriteToConfig(string pythonDir, string configPath)
         {
             // Create configuration object for unityMCP
+            // Build arguments list
+            var argsList = new List<string>
+            {
+                "--directory", pythonDir, 
+                "run", "server.py",
+                "--unity-port", McpSettings.Instance.UnityPort.ToString(),
+                "--mcp-port", McpSettings.Instance.McpPort.ToString()
+            };
+            
+            // Add debug flag if enabled
+            if (McpSettings.Instance.DebugLogging)
+            {
+                argsList.Add("--debug");
+            }
+            
             McpConfigServer unityMCPConfig = new()
             {
                 command = "uv",
-                args = new[] { 
-                    "--directory", pythonDir, 
-                    "run", "server.py",
-                    "--unity-port", McpSettings.Instance.UnityPort.ToString(),
-                    "--mcp-port", McpSettings.Instance.McpPort.ToString()
-                },
+                args = argsList.ToArray(),
             };
 
             JsonSerializerSettings jsonSettings = new() { Formatting = Formatting.Indented };
@@ -386,7 +408,7 @@ namespace UnityMcpBridge.Editor.Windows
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning($"Error reading existing config: {e.Message}.");
+                    McpLogger.LogWarning($"Error reading existing config: {e.Message}.");
                 }
             }
 
@@ -426,6 +448,21 @@ namespace UnityMcpBridge.Editor.Windows
             // Get the Python directory path using Package Manager API
             string pythonDir = FindPackagePythonDirectory();
 
+            // Build arguments list for manual config
+            var manualArgsList = new List<string>
+            {
+                "--directory", pythonDir, 
+                "run", "server.py",
+                "--unity-port", McpSettings.Instance.UnityPort.ToString(),
+                "--mcp-port", McpSettings.Instance.McpPort.ToString()
+            };
+            
+            // Add debug flag if enabled
+            if (McpSettings.Instance.DebugLogging)
+            {
+                manualArgsList.Add("--debug");
+            }
+            
             // Create the manual configuration message
             McpConfig jsonConfig = new()
             {
@@ -434,12 +471,7 @@ namespace UnityMcpBridge.Editor.Windows
                     unityMCP = new McpConfigServer
                     {
                         command = "uv",
-                        args = new[] { 
-                            "--directory", pythonDir, 
-                            "run", "server.py",
-                            "--unity-port", McpSettings.Instance.UnityPort.ToString(),
-                            "--mcp-port", McpSettings.Instance.McpPort.ToString()
-                        },
+                        args = manualArgsList.ToArray(),
                     },
                 },
             };
@@ -482,7 +514,7 @@ namespace UnityMcpBridge.Editor.Windows
                 }
                 else if (request.Error != null)
                 {
-                    Debug.LogError("Failed to list packages: " + request.Error.message);
+                    McpLogger.LogError("Failed to list packages: " + request.Error.message);
                 }
 
                 // If not found via Package Manager, try manual approaches
@@ -501,11 +533,11 @@ namespace UnityMcpBridge.Editor.Windows
                 }
 
                 // If still not found, return the placeholder path
-                Debug.LogWarning("Could not find Python directory, using placeholder path");
+                McpLogger.LogWarning("Could not find Python directory, using placeholder path");
             }
             catch (Exception e)
             {
-                Debug.LogError($"Error finding package path: {e.Message}");
+                McpLogger.LogError($"Error finding package path: {e.Message}");
             }
 
             return pythonDir;
@@ -573,7 +605,7 @@ namespace UnityMcpBridge.Editor.Windows
                 }
 
                 ShowManualInstructionsWindow(configPath, mcpClient);
-                Debug.LogError(
+                McpLogger.LogError(
                     $"Failed to configure {mcpClient.name}: {e.Message}\n{e.StackTrace}"
                 );
                 return $"Failed to configure {mcpClient.name}";
@@ -590,6 +622,21 @@ namespace UnityMcpBridge.Editor.Windows
             // Get the Python directory path using Package Manager API
             string pythonDir = FindPackagePythonDirectory();
 
+            // Build arguments list for manual config
+            var manualArgsList = new List<string>
+            {
+                "--directory", pythonDir, 
+                "run", "server.py",
+                "--unity-port", McpSettings.Instance.UnityPort.ToString(),
+                "--mcp-port", McpSettings.Instance.McpPort.ToString()
+            };
+            
+            // Add debug flag if enabled
+            if (McpSettings.Instance.DebugLogging)
+            {
+                manualArgsList.Add("--debug");
+            }
+            
             // Create the manual configuration message
             McpConfig jsonConfig = new()
             {
@@ -598,12 +645,7 @@ namespace UnityMcpBridge.Editor.Windows
                     unityMCP = new McpConfigServer
                     {
                         command = "uv",
-                        args = new[] { 
-                            "--directory", pythonDir, 
-                            "run", "server.py",
-                            "--unity-port", McpSettings.Instance.UnityPort.ToString(),
-                            "--mcp-port", McpSettings.Instance.McpPort.ToString()
-                        },
+                        args = manualArgsList.ToArray(),
                     },
                 },
             };
@@ -676,7 +718,7 @@ namespace UnityMcpBridge.Editor.Windows
         
         private void TestTcpConnection()
         {
-            Debug.Log($"Testing TCP connection to localhost:{McpSettings.Instance.UnityPort}...");
+            McpLogger.Log($"Testing TCP connection to localhost:{McpSettings.Instance.UnityPort}...");
             
             try
             {
@@ -684,13 +726,13 @@ namespace UnityMcpBridge.Editor.Windows
                 {
                     // Try to connect to ourselves
                     client.Connect(IPAddress.Loopback, McpSettings.Instance.UnityPort);
-                    Debug.Log($"Successfully connected to Unity Bridge on port {McpSettings.Instance.UnityPort}");
+                    McpLogger.LogInfo($"Successfully connected to Unity Bridge on port {McpSettings.Instance.UnityPort}");
                     
                     // Send a test ping
                     NetworkStream stream = client.GetStream();
                     byte[] pingData = Encoding.UTF8.GetBytes("ping");
                     stream.Write(pingData, 0, pingData.Length);
-                    Debug.Log("Sent ping command");
+                    McpLogger.Log("Sent ping command");
                     
                     // Read response
                     byte[] buffer = new byte[1024];
@@ -698,32 +740,32 @@ namespace UnityMcpBridge.Editor.Windows
                     if (bytesRead > 0)
                     {
                         string response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Debug.Log($"Received response: {response}");
+                        McpLogger.Log($"Received response: {response}");
                     }
                     else
                     {
-                        Debug.LogWarning("No response received");
+                        McpLogger.LogWarning("No response received");
                     }
                 }
             }
             catch (SocketException ex)
             {
-                Debug.LogError($"Socket error during connection test: {ex.Message}");
-                Debug.LogError($"Error code: {ex.SocketErrorCode}");
+                McpLogger.LogError($"Socket error during connection test: {ex.Message}");
+                McpLogger.LogError($"Error code: {ex.SocketErrorCode}");
                 
                 if (ex.SocketErrorCode == SocketError.ConnectionRefused)
                 {
-                    Debug.LogError("Connection refused - Unity Bridge may not be listening properly");
+                    McpLogger.LogError("Connection refused - Unity Bridge may not be listening properly");
                 }
                 else if (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
                 {
-                    Debug.LogError("Port already in use by another process");
+                    McpLogger.LogError("Port already in use by another process");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Error during connection test: {ex.Message}");
-                Debug.LogError($"Exception type: {ex.GetType().Name}");
+                McpLogger.LogError($"Error during connection test: {ex.Message}");
+                McpLogger.LogError($"Exception type: {ex.GetType().Name}");
             }
         }
     }
