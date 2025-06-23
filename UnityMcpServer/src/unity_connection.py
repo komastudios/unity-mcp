@@ -16,9 +16,16 @@ logger = logging.getLogger("unity-mcp-server")
 @dataclass
 class UnityConnection:
     """Manages the socket connection to the Unity Editor."""
-    host: str = config.unity_host
-    port: int = config.unity_port
+    host: str = None
+    port: int = None
     sock: socket.socket = None  # Socket for Unity communication
+    
+    def __post_init__(self):
+        """Initialize with current config values if not provided."""
+        if self.host is None:
+            self.host = config.unity_host
+        if self.port is None:
+            self.port = config.unity_port
 
     def connect(self) -> bool:
         """Establish a connection to the Unity Editor."""
@@ -29,9 +36,22 @@ class UnityConnection:
             # Currently using unencrypted TCP socket which exposes commands and data on localhost
             # Consider using ssl.wrap_socket() with self-signed certificates for local security
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            logger.info(f"Attempting to connect to Unity at {self.host}:{self.port}...")
+            self.sock.settimeout(5.0)  # 5 second timeout for connection
             self.sock.connect((self.host, self.port))
             logger.info(f"Connected to Unity at {self.host}:{self.port}")
+            logger.info(f"Local endpoint: {self.sock.getsockname()}")
+            logger.info(f"Remote endpoint: {self.sock.getpeername()}")
             return True
+        except socket.timeout:
+            logger.error(f"Connection timeout - Unity MCP Bridge not responding on {self.host}:{self.port}")
+            self.sock = None
+            return False
+        except socket.error as e:
+            logger.error(f"Socket error connecting to Unity at {self.host}:{self.port}: {e}")
+            logger.error(f"Error code: {e.errno if hasattr(e, 'errno') else 'N/A'}")
+            self.sock = None
+            return False
         except Exception as e:
             logger.error(f"Failed to connect to Unity: {str(e)}")
             self.sock = None
@@ -227,6 +247,7 @@ def get_unity_connection() -> UnityConnection:
     # Create a new connection
     logger.info("Creating new Unity connection")
     _unity_connection = UnityConnection()
+    logger.info(f"Unity connection configured for {_unity_connection.host}:{_unity_connection.port}")
     if not _unity_connection.connect():
         _unity_connection = None
         raise ConnectionError("Could not connect to Unity. Ensure the Unity Editor and MCP Bridge are running.")

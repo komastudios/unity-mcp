@@ -82,6 +82,8 @@ namespace UnityMcpBridge.Editor
                 listener.Start();
                 isRunning = true;
                 Debug.Log($"UnityMcpBridge started on port {UnityPort}.");
+                Debug.Log($"Listening on: {IPAddress.Loopback}:{UnityPort}");
+                Debug.Log($"Waiting for MCP server connections...");
                 // Assuming ListenerLoop and ProcessCommands are defined elsewhere
                 Task.Run(ListenerLoop);
                 EditorApplication.update += ProcessCommands;
@@ -129,6 +131,8 @@ namespace UnityMcpBridge.Editor
                 try
                 {
                     TcpClient client = await listener.AcceptTcpClientAsync();
+                    Debug.Log($"Accepted connection from: {client.Client.RemoteEndPoint}");
+                    
                     // Enable basic socket keepalive
                     client.Client.SetSocketOption(
                         SocketOptionLevel.Socket,

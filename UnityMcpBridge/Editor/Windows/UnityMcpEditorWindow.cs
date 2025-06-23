@@ -1,6 +1,9 @@
 using System;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text;
 using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
@@ -326,6 +329,11 @@ namespace UnityMcpBridge.Editor.Windows
             if (GUILayout.Button(isUnityBridgeRunning ? "Stop Bridge" : "Start Bridge"))
             {
                 ToggleUnityBridge();
+            }
+            
+            if (isUnityBridgeRunning && GUILayout.Button("Test Connection"))
+            {
+                TestTcpConnection();
             }
             EditorGUILayout.EndVertical();
 
@@ -663,6 +671,59 @@ namespace UnityMcpBridge.Editor.Windows
             catch (Exception e)
             {
                 mcpClient.SetStatus(McpStatus.Error, e.Message);
+            }
+        }
+        
+        private void TestTcpConnection()
+        {
+            Debug.Log($"Testing TCP connection to localhost:{McpSettings.Instance.UnityPort}...");
+            
+            try
+            {
+                using (TcpClient client = new TcpClient())
+                {
+                    // Try to connect to ourselves
+                    client.Connect(IPAddress.Loopback, McpSettings.Instance.UnityPort);
+                    Debug.Log($"Successfully connected to Unity Bridge on port {McpSettings.Instance.UnityPort}");
+                    
+                    // Send a test ping
+                    NetworkStream stream = client.GetStream();
+                    byte[] pingData = Encoding.UTF8.GetBytes("ping");
+                    stream.Write(pingData, 0, pingData.Length);
+                    Debug.Log("Sent ping command");
+                    
+                    // Read response
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                    if (bytesRead > 0)
+                    {
+                        string response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                        Debug.Log($"Received response: {response}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("No response received");
+                    }
+                }
+            }
+            catch (SocketException ex)
+            {
+                Debug.LogError($"Socket error during connection test: {ex.Message}");
+                Debug.LogError($"Error code: {ex.SocketErrorCode}");
+                
+                if (ex.SocketErrorCode == SocketError.ConnectionRefused)
+                {
+                    Debug.LogError("Connection refused - Unity Bridge may not be listening properly");
+                }
+                else if (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+                {
+                    Debug.LogError("Port already in use by another process");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Error during connection test: {ex.Message}");
+                Debug.LogError($"Exception type: {ex.GetType().Name}");
             }
         }
     }
