@@ -22,7 +22,7 @@ namespace UnityMcpBridge.Editor.Tools
         private static readonly object lockObj = new object();
         private static Dictionary<string, DomainReloadJob> activeJobs = new Dictionary<string, DomainReloadJob>();
         private static bool handlersRegistered = false;
-        private static bool wasRestoredAfterReload = false;
+
         
         // Static constructor - runs when domain loads
         static TriggerDomainReload()
@@ -34,7 +34,7 @@ namespace UnityMcpBridge.Editor.Tools
             {
                 // We've been reloaded - restore state
                 SESSION_ID = existingSessionId;
-                wasRestoredAfterReload = true;
+
                 Debug.Log($"[TriggerDomainReload] Restored after domain reload. Session: {SESSION_ID}");
                 RestoreJobsFromSessionState();
             }
@@ -136,40 +136,7 @@ namespace UnityMcpBridge.Editor.Tools
                     handlersRegistered = true;
                 }
 
-                // ALWAYS require confirmation for asset-heavy operations (security: cannot be overridden via TCP)
-                bool needsConfirmation = action == "refresh_assets" || action == "compile_and_reload";
-                
-                if (needsConfirmation)
-                {
-                    string dialogTitle = "Confirm Asset Refresh";
-                    string dialogMessage = action == "refresh_assets" 
-                        ? "Asset refresh can take a long time for large projects.\n\nDo you want to proceed with refreshing all assets?"
-                        : "Full compile and reload includes asset refresh which can take a long time for large projects.\n\nDo you want to proceed?";
-                    
-                    bool userConfirmed = EditorUtility.DisplayDialog(
-                        dialogTitle,
-                        dialogMessage,
-                        "Yes, Proceed",
-                        "Cancel"
-                    );
-                    
-                    if (!userConfirmed)
-                    {
-                        // User cancelled - clean up and return
-                        lock (lockObj)
-                        {
-                            activeJobs.Remove(newJobId);
-                            SaveActiveJobIds();
-                        }
-                        
-                        return new
-                        {
-                            success = false,
-                            error = "User cancelled the operation",
-                            message = "Asset refresh was cancelled by user"
-                        };
-                    }
-                }
+
                 
                 // Perform the requested action
                 Debug.Log($"[TriggerDomainReload] Starting job {newJobId} - Action: {action}");

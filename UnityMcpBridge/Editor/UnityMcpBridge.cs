@@ -16,6 +16,12 @@ using UnityMcpBridge.Editor.Tools;
 namespace UnityMcpBridge.Editor
 {
     [InitializeOnLoad]
+    public class ClientState
+    {
+        public string EndPoint { get; set; }
+        public string CurrentCommand { get; set; }
+    }
+
     public static partial class UnityMcpBridge
     {
         private static TcpListener listener;
@@ -23,9 +29,10 @@ namespace UnityMcpBridge.Editor
         private static readonly object lockObj = new();
         private static Dictionary<
             string,
-            (string commandJson, TaskCompletionSource<string> tcs)
+            (string commandJson, TaskCompletionSource<string> tcs, ClientState clientState)
         > commandQueue = new();
         private static int UnityPort => McpSettings.Instance.UnityPort;
+        public static readonly List<ClientState> ConnectedClients = new();
 
         public static bool IsRunning => isRunning;
 
@@ -158,287 +165,182 @@ namespace UnityMcpBridge.Editor
 
         private static async Task HandleClientAsync(TcpClient client)
         {
-            using (client)
-            using (NetworkStream stream = client.GetStream())
+            var clientState = new ClientState
             {
-                byte[] buffer = new byte[8192];
-                while (isRunning)
+                EndPoint = client.Client.RemoteEndPoint.ToString(),
+                CurrentCommand = "Idle"
+            };
+            ConnectedClients.Add(clientState);
+
+            try
+            {
+                using (client)
+                using (NetworkStream stream = client.GetStream())
                 {
-                    try
+                    byte[] buffer = new byte[8192];
+                    while (isRunning)
                     {
-                        int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                        if (bytesRead == 0)
+                        try
                         {
-                            break; // Client disconnected
-                        }
+                            int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                            if (bytesRead == 0)
+                            {
+                                break; // Client disconnected
+                            }
 
-                        string commandText = System.Text.Encoding.UTF8.GetString(
-                            buffer,
-                            0,
-                            bytesRead
-                        );
-                        string commandId = Guid.NewGuid().ToString();
-                        TaskCompletionSource<string> tcs = new();
-
-                        // Special handling for ping command to avoid JSON parsing
-                        if (commandText.Trim() == "ping")
-                        {
-                            // Direct response to ping without going through JSON parsing
-                            byte[] pingResponseBytes = System.Text.Encoding.UTF8.GetBytes(
-                                /*lang=json,strict*/
-                                "{\"status\":\"success\",\"result\":{\"message\":\"pong\"}}"
+                            string commandText = System.Text.Encoding.UTF8.GetString(
+                                buffer,
+                                0,
+                                bytesRead
                             );
-                            await stream.WriteAsync(pingResponseBytes, 0, pingResponseBytes.Length);
-                            continue;
-                        }
+                            string commandId = Guid.NewGuid().ToString();
+                            TaskCompletionSource<string> tcs = new();
 
-                        lock (lockObj)
+                            // Special handling for ping command to avoid JSON parsing
+                            if (commandText.Trim() == "ping")
+                            {
+                                // Direct response to ping without going through JSON parsing
+                                byte[] pingResponseBytes = System.Text.Encoding.UTF8.GetBytes(
+                                    /*lang=json,strict*/
+                                    "{\"status\":\"success\",\"result\":{\"message\":\"pong\"}}"
+                                );
+                                await stream.WriteAsync(pingResponseBytes, 0, pingResponseBytes.Length);
+                                continue;
+                            }
+
+                            clientState.CurrentCommand = commandText;
+                            lock (lockObj)
+                            {
+                                commandQueue[commandId] = (commandText, tcs, clientState);
+                            }
+
+
+                            string response = await tcs.Task;
+                            byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(response);
+                            await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
+                        }
+                        catch (IOException ex)
                         {
-                            commandQueue[commandId] = (commandText, tcs);
+                            McpLogger.LogWarning($"Client disconnected: {ex.Message}");
+                            break; // Exit loop on disconnection
                         }
-
-                        string response = await tcs.Task;
-                        byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(response);
-                        await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
-                    }
-                    catch (Exception ex)
-                    {
-                        McpLogger.LogError($"Client handler error: {ex.Message}");
-                        break;
+                        catch (Exception ex)
+                        {
+                            McpLogger.LogError($"Error handling client: {ex.Message}");
+                            break; // Exit loop on error
+                        }
                     }
                 }
+            }
+            finally
+            {
+                ConnectedClients.Remove(clientState);
             }
         }
 
         private static void ProcessCommands()
         {
-            List<string> processedIds = new();
+            if (commandQueue.Count == 0)
+            {
+                return;
+            }
+
+            var commandsToProcess = new Dictionary<string, (string, TaskCompletionSource<string>, ClientState)>();
             lock (lockObj)
             {
-                foreach (
-                    KeyValuePair<
-                        string,
-                        (string commandJson, TaskCompletionSource<string> tcs)
-                    > kvp in commandQueue.ToList()
-                )
-                {
-                    string id = kvp.Key;
-                    string commandText = kvp.Value.commandJson;
-                    TaskCompletionSource<string> tcs = kvp.Value.tcs;
-
-                    try
-                    {
-                        // Special case handling
-                        if (string.IsNullOrEmpty(commandText))
-                        {
-                            var emptyResponse = new
-                            {
-                                status = "error",
-                                error = "Empty command received",
-                            };
-                            tcs.SetResult(JsonConvert.SerializeObject(emptyResponse));
-                            processedIds.Add(id);
-                            continue;
-                        }
-
-                        // Trim the command text to remove any whitespace
-                        commandText = commandText.Trim();
-
-                        // Non-JSON direct commands handling (like ping)
-                        if (commandText == "ping")
-                        {
-                            var pingResponse = new
-                            {
-                                status = "success",
-                                result = new { message = "pong" },
-                            };
-                            tcs.SetResult(JsonConvert.SerializeObject(pingResponse));
-                            processedIds.Add(id);
-                            continue;
-                        }
-
-                        // Check if the command is valid JSON before attempting to deserialize
-                        if (!IsValidJson(commandText))
-                        {
-                            var invalidJsonResponse = new
-                            {
-                                status = "error",
-                                error = "Invalid JSON format",
-                                receivedText = commandText.Length > 50
-                                    ? commandText[..50] + "..."
-                                    : commandText,
-                            };
-                            tcs.SetResult(JsonConvert.SerializeObject(invalidJsonResponse));
-                            processedIds.Add(id);
-                            continue;
-                        }
-
-                        // Normal JSON command processing
-                        Command command = JsonConvert.DeserializeObject<Command>(commandText);
-                        if (command == null)
-                        {
-                            var nullCommandResponse = new
-                            {
-                                status = "error",
-                                error = "Command deserialized to null",
-                                details = "The command was valid JSON but could not be deserialized to a Command object",
-                            };
-                            tcs.SetResult(JsonConvert.SerializeObject(nullCommandResponse));
-                        }
-                        else
-                        {
-                            string responseJson = ExecuteCommand(command);
-                            tcs.SetResult(responseJson);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        McpLogger.LogError($"Error processing command: {ex.Message}\n{ex.StackTrace}");
-
-                        var response = new
-                        {
-                            status = "error",
-                            error = ex.Message,
-                            commandType = "Unknown (error during processing)",
-                            receivedText = commandText?.Length > 50
-                                ? commandText[..50] + "..."
-                                : commandText,
-                        };
-                        string responseJson = JsonConvert.SerializeObject(response);
-                        tcs.SetResult(responseJson);
-                    }
-
-                    processedIds.Add(id);
-                }
-
-                foreach (string id in processedIds)
-                {
-                    commandQueue.Remove(id);
-                }
-            }
-        }
-
-        // Helper method to check if a string is valid JSON
-        private static bool IsValidJson(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return false;
+                commandsToProcess = commandQueue;
+                commandQueue = new Dictionary<string, (string, TaskCompletionSource<string>, ClientState)>();
             }
 
-            text = text.Trim();
-            if (
-                (text.StartsWith("{") && text.EndsWith("}"))
-                || // Object
-                (text.StartsWith("[") && text.EndsWith("]"))
-            ) // Array
+            foreach (var command in commandsToProcess)
             {
+                string responseJson;
                 try
                 {
-                    JToken.Parse(text);
-                    return true;
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-
-            return false;
-        }
-
-        private static string ExecuteCommand(Command command)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(command.type))
-                {
-                    var errorResponse = new
-                    {
-                        status = "error",
-                        error = "Command type cannot be empty",
-                        details = "A valid command type is required for processing",
-                    };
-                    return JsonConvert.SerializeObject(errorResponse);
-                }
-
-                // Handle ping command for connection verification
-                if (command.type.Equals("ping", StringComparison.OrdinalIgnoreCase))
-                {
-                    var pingResponse = new
-                    {
-                        status = "success",
-                        result = new { message = "pong" },
-                    };
-                    return JsonConvert.SerializeObject(pingResponse);
-                }
-
-                // Use JObject for parameters as the new handlers likely expect this
-                JObject paramsObject = command.@params ?? new JObject();
-
-                // Route command based on the new tool structure from the refactor plan
-                object result = command.type switch
-                {
-                    // Maps the command type (tool name) to the corresponding handler's static HandleCommand method
-                    // Assumes each handler class has a static method named 'HandleCommand' that takes JObject parameters
-                    "manage_script" => ManageScript.HandleCommand(paramsObject),
-                    "manage_scene" => ManageScene.HandleCommand(paramsObject),
-                    "manage_editor" => ManageEditor.HandleCommand(paramsObject),
-                    "manage_gameobject" => ManageGameObject.HandleCommand(paramsObject),
-                    "manage_asset" => ManageAsset.HandleCommand(paramsObject),
-                    "read_console" => ReadConsole.HandleCommand(paramsObject),
-                    "execute_menu_item" => ExecuteMenuItem.HandleCommand(paramsObject),
-                    "trigger_domain_reload" => TriggerDomainReload.HandleCommand(paramsObject),
-                    _ => throw new ArgumentException(
-                        $"Unknown or unsupported command type: {command.type}"
-                    ),
-                };
-
-                // Standard success response format
-                var response = new { status = "success", result };
-                return JsonConvert.SerializeObject(response);
-            }
-            catch (Exception ex)
-            {
-                // Log the detailed error in Unity for debugging
-                McpLogger.LogError(
-                    $"Error executing command '{command?.type ?? "Unknown"}': {ex.Message}\n{ex.StackTrace}"
-                );
-
-                // Standard error response format
-                var response = new
-                {
-                    status = "error",
-                    error = ex.Message, // Provide the specific error message
-                    command = command?.type ?? "Unknown", // Include the command type if available
-                    stackTrace = ex.StackTrace, // Include stack trace for detailed debugging
-                    paramsSummary = command?.@params != null
-                        ? GetParamsSummary(command.@params)
-                        : "No parameters", // Summarize parameters for context
-                };
-                return JsonConvert.SerializeObject(response);
-            }
-        }
-
-        // Helper method to get a summary of parameters for error reporting
-        private static string GetParamsSummary(JObject @params)
-        {
-            try
-            {
-                return @params == null || !@params.HasValues
-                    ? "No parameters"
-                    : string.Join(
-                        ", ",
-                        @params
-                            .Properties()
-                            .Select(static p =>
-                                $"{p.Name}: {p.Value?.ToString()?[..Math.Min(20, p.Value?.ToString()?.Length ?? 0)]}"
-                            )
+                    var commandData = JsonConvert.DeserializeObject<Command>(
+                        command.Value.Item1
                     );
-            }
-            catch
-            {
-                return "Could not summarize parameters";
+                    var result = new JObject();
+
+                    switch (commandData.type)
+                    {
+                        case "manage_editor":
+                            result = JObject.FromObject(
+                                ManageEditor.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_scene":
+                            result = JObject.FromObject(
+                                ManageScene.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_gameobject":
+                            result = JObject.FromObject(
+                                ManageGameObject.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_asset":
+                            result = JObject.FromObject(
+                                ManageAsset.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_script":
+                            result = JObject.FromObject(
+                                ManageScript.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "read_console":
+                            result = JObject.FromObject(
+                                ReadConsole.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "execute_menu_item":
+                            result = JObject.FromObject(
+                                ExecuteMenuItem.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "take_screenshot":
+                            result = JObject.FromObject(
+                                ScreenshotTool.TakeScreenshot(commandData.@params.ToObject<Dictionary<string, object>>())                            
+                            );
+                            break;
+                        case "trigger_domain_reload":
+                            result = JObject.FromObject(
+                                TriggerDomainReload.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        default:
+                            result = new JObject
+                            {
+                                { "success", false },
+                                {
+                                    "error",
+                                    $"Unknown or unsupported command type: {commandData.type}"
+                                }
+                            };
+                            break;
+                    }
+
+                    responseJson = JsonConvert.SerializeObject(
+                        new { status = "success", result },
+                        Formatting.Indented
+                    );
+                }
+                catch (Exception ex)
+                {
+                    responseJson = JsonConvert.SerializeObject(
+                        new
+                        {
+                            status = "error",
+                            error = $"Failed to process command: {ex.Message}",
+                            stackTrace = ex.StackTrace
+                        },
+                        Formatting.Indented
+                    );
+                }
+
+                command.Value.Item2.SetResult(responseJson);
+                command.Value.Item3.CurrentCommand = "Idle";
             }
         }
     }

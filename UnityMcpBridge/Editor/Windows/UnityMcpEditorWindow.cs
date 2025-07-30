@@ -24,6 +24,7 @@ namespace UnityMcpBridge.Editor.Windows
         private bool showPortSettings = false;
         private string unityPortInput;
         private string mcpPortInput;
+        private int _selectedTab = 0;
 
         [MenuItem("Window/Unity MCP")]
         public static void ShowWindow()
@@ -46,21 +47,6 @@ namespace UnityMcpBridge.Editor.Windows
             mcpPortInput = McpSettings.Instance.McpPort.ToString();
         }
 
-        private Color GetStatusColor(McpStatus status)
-        {
-            // Return appropriate color based on the status enum
-            return status switch
-            {
-                McpStatus.Configured => Color.green,
-                McpStatus.Running => Color.green,
-                McpStatus.Connected => Color.green,
-                McpStatus.IncorrectPath => Color.yellow,
-                McpStatus.CommunicationError => Color.yellow,
-                McpStatus.NoResponse => Color.yellow,
-                _ => Color.red, // Default to red for error states or not configured
-            };
-        }
-
         private void UpdatePythonServerInstallationStatus()
         {
             string serverPath = ServerInstaller.GetServerPath();
@@ -73,289 +59,274 @@ namespace UnityMcpBridge.Editor.Windows
                 if (ServerInstaller.IsNewerVersion(latestVersion, installedVersion))
                 {
                     pythonServerInstallationStatus = "Newer Version Available";
-                    pythonServerInstallationStatusColor = Color.yellow;
+                    pythonServerInstallationStatusColor = UnityMcpStyles.Yellow;
                 }
                 else
                 {
                     pythonServerInstallationStatus = "Up to Date";
-                    pythonServerInstallationStatusColor = Color.green;
+                    pythonServerInstallationStatusColor = UnityMcpStyles.Green;
                 }
             }
             else
             {
                 pythonServerInstallationStatus = "Not Installed";
-                pythonServerInstallationStatusColor = Color.red;
+                pythonServerInstallationStatusColor = UnityMcpStyles.Red;
             }
-        }
-
-        private void ConfigurationSection(McpClient mcpClient)
-        {
-            // Calculate if we should use half-width layout
-            // Minimum width for half-width layout is 400 pixels
-            bool useHalfWidth = position.width >= 800;
-            float sectionWidth = useHalfWidth ? (position.width / 2) - 15 : position.width - 20;
-
-            // Begin horizontal layout if using half-width
-            if (useHalfWidth && mcpClients.clients.IndexOf(mcpClient) % 2 == 0)
-            {
-                EditorGUILayout.BeginHorizontal();
-            }
-
-            // Begin section with fixed width
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox, GUILayout.Width(sectionWidth));
-
-            // Header with improved styling
-            EditorGUILayout.Space(5);
-            Rect headerRect = EditorGUILayout.GetControlRect(false, 24);
-            GUI.Label(
-                new Rect(
-                    headerRect.x + 8,
-                    headerRect.y + 4,
-                    headerRect.width - 16,
-                    headerRect.height
-                ),
-                mcpClient.name + " Configuration",
-                EditorStyles.boldLabel
-            );
-            EditorGUILayout.Space(5);
-
-            // Status indicator with colored dot
-            Rect statusRect = EditorGUILayout.BeginHorizontal(GUILayout.Height(20));
-            Color statusColor = GetStatusColor(mcpClient.status);
-
-            // Draw status dot
-            DrawStatusDot(statusRect, statusColor);
-
-            // Status text with some padding
-            EditorGUILayout.LabelField(
-                new GUIContent("      " + mcpClient.configStatus),
-                GUILayout.Height(20),
-                GUILayout.MinWidth(100)
-            );
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.Space(8);
-
-            // Configure button with improved styling
-            GUIStyle buttonStyle = new(GUI.skin.button)
-            {
-                padding = new RectOffset(15, 15, 5, 5),
-                margin = new RectOffset(10, 10, 5, 5),
-            };
-
-            // Create muted button style for Manual Setup
-            GUIStyle mutedButtonStyle = new(buttonStyle);
-
-            if (
-                GUILayout.Button(
-                    $"Auto Configure {mcpClient.name}",
-                    buttonStyle,
-                    GUILayout.Height(28)
-                )
-            )
-            {
-                ConfigureMcpClient(mcpClient);
-            }
-
-            if (GUILayout.Button("Manual Setup", mutedButtonStyle, GUILayout.Height(28)))
-            {
-                // Get the appropriate config path based on OS
-                string configPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? mcpClient.windowsConfigPath
-                    : mcpClient.linuxConfigPath;
-                ShowManualInstructionsWindow(configPath, mcpClient);
-            }
-            EditorGUILayout.Space(5);
-
-            EditorGUILayout.EndVertical();
-
-            // End horizontal layout if using half-width and at the end of a row
-            if (useHalfWidth && mcpClients.clients.IndexOf(mcpClient) % 2 == 1)
-            {
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.Space(5);
-            }
-            // Add space and end the horizontal layout if last item is odd
-            else if (
-                useHalfWidth
-                && mcpClients.clients.IndexOf(mcpClient) == mcpClients.clients.Count - 1
-            )
-            {
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.Space(5);
-            }
-        }
-
-        private void DrawStatusDot(Rect statusRect, Color statusColor)
-        {
-            Rect dotRect = new(statusRect.x + 6, statusRect.y + 4, 12, 12);
-            Vector3 center = new(
-                dotRect.x + (dotRect.width / 2),
-                dotRect.y + (dotRect.height / 2),
-                0
-            );
-            float radius = dotRect.width / 2;
-
-            // Draw the main dot
-            Handles.color = statusColor;
-            Handles.DrawSolidDisc(center, Vector3.forward, radius);
-
-            // Draw the border
-            Color borderColor = new(
-                statusColor.r * 0.7f,
-                statusColor.g * 0.7f,
-                statusColor.b * 0.7f
-            );
-            Handles.color = borderColor;
-            Handles.DrawWireDisc(center, Vector3.forward, radius);
         }
 
         private void OnGUI()
         {
             scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
 
-            EditorGUILayout.Space(10);
-            // Title with improved styling
-            Rect titleRect = EditorGUILayout.GetControlRect(false, 30);
-            EditorGUI.DrawRect(
-                new Rect(titleRect.x, titleRect.y, titleRect.width, titleRect.height),
-                new Color(0.2f, 0.2f, 0.2f, 0.1f)
-            );
-            GUI.Label(
-                new Rect(titleRect.x + 10, titleRect.y + 6, titleRect.width - 20, titleRect.height),
-                "MCP Editor",
-                EditorStyles.boldLabel
-            );
-            EditorGUILayout.Space(10);
+            DrawTitle();
+            DrawServerStatusSection();
+            DrawBridgeSection();
+            DrawConfigurationSections();
 
-            // Python Server Installation Status Section
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            EditorGUILayout.LabelField("Python Server Status", EditorStyles.boldLabel);
+            EditorGUILayout.EndScrollView();
+        }
 
-            // Status indicator with colored dot
+        private void DrawTitle()
+        {
+            EditorGUILayout.LabelField("MCP Editor", UnityMcpStyles.TitleLabel);
+        }
+
+        private void DrawServerStatusSection()
+        {
+            EditorGUILayout.BeginVertical(UnityMcpStyles.Box);
+            EditorGUILayout.LabelField("Python Server Status", UnityMcpStyles.HeaderLabel);
+
+            EditorGUILayout.BeginHorizontal();
+
+            EditorGUILayout.BeginVertical();
             Rect installStatusRect = EditorGUILayout.BeginHorizontal(GUILayout.Height(20));
-            DrawStatusDot(installStatusRect, pythonServerInstallationStatusColor);
+            UnityMcpStyles.DrawStatusDot(installStatusRect, pythonServerInstallationStatusColor);
             EditorGUILayout.LabelField("      " + pythonServerInstallationStatus);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.LabelField($"Unity Port: {McpSettings.Instance.UnityPort}");
             EditorGUILayout.LabelField($"MCP Port: {McpSettings.Instance.McpPort}");
-            
-            // Debug Logging Toggle
-            EditorGUILayout.Space(5);
-            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.BeginVertical();
             bool newDebugLogging = EditorGUILayout.Toggle("Debug Logging", McpSettings.Instance.DebugLogging);
             if (newDebugLogging != McpSettings.Instance.DebugLogging)
             {
                 McpSettings.Instance.DebugLogging = newDebugLogging;
                 McpLogger.LogInfo($"Debug logging {(newDebugLogging ? "enabled" : "disabled")}");
             }
-            EditorGUILayout.EndHorizontal();
-            
-            // Port Settings Section
-            EditorGUILayout.BeginHorizontal();
+
             showPortSettings = EditorGUILayout.Foldout(showPortSettings, "Port Settings", true);
-            EditorGUILayout.EndHorizontal();
-            
             if (showPortSettings)
             {
-                EditorGUI.indentLevel++;
-                
-                // Unity Port
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField("Unity Port:", GUILayout.Width(80));
-                unityPortInput = EditorGUILayout.TextField(unityPortInput, GUILayout.Width(60));
-                if (GUILayout.Button("Set", GUILayout.Width(40)))
-                {
-                    if (int.TryParse(unityPortInput, out int newPort) && newPort > 0 && newPort <= 65535)
-                    {
-                        if (isUnityBridgeRunning)
-                        {
-                            EditorUtility.DisplayDialog("Port Change", "Please stop the Unity Bridge before changing ports.", "OK");
-                        }
-                        else
-                        {
-                            McpSettings.Instance.UnityPort = newPort;
-                            McpLogger.LogInfo($"Unity port changed to {newPort}");
-                        }
-                    }
-                    else
-                    {
-                        EditorUtility.DisplayDialog("Invalid Port", "Please enter a valid port number (1-65535).", "OK");
-                        unityPortInput = McpSettings.Instance.UnityPort.ToString();
-                    }
-                }
-                EditorGUILayout.EndHorizontal();
-                
-                // MCP Port
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField("MCP Port:", GUILayout.Width(80));
-                mcpPortInput = EditorGUILayout.TextField(mcpPortInput, GUILayout.Width(60));
-                if (GUILayout.Button("Set", GUILayout.Width(40)))
-                {
-                    if (int.TryParse(mcpPortInput, out int newPort) && newPort > 0 && newPort <= 65535)
-                    {
-                        McpSettings.Instance.McpPort = newPort;
-                        McpLogger.LogInfo($"MCP port changed to {newPort}");
-                    }
-                    else
-                    {
-                        EditorUtility.DisplayDialog("Invalid Port", "Please enter a valid port number (1-65535).", "OK");
-                        mcpPortInput = McpSettings.Instance.McpPort.ToString();
-                    }
-                }
-                EditorGUILayout.EndHorizontal();
-                
-                // Reset to defaults button
-                if (GUILayout.Button("Reset to Defaults", GUILayout.Width(120)))
-                {
-                    if (isUnityBridgeRunning)
-                    {
-                        EditorUtility.DisplayDialog("Port Change", "Please stop the Unity Bridge before resetting ports.", "OK");
-                    }
-                    else
-                    {
-                        McpSettings.Instance.ResetToDefaults();
-                        unityPortInput = McpSettings.Instance.UnityPort.ToString();
-                        mcpPortInput = McpSettings.Instance.McpPort.ToString();
-                        McpLogger.LogInfo("Ports reset to defaults (Unity: 6400, MCP: 6500)");
-                    }
-                }
-                
-                EditorGUI.indentLevel--;
+                DrawPortSettings();
             }
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.EndHorizontal();
+
             EditorGUILayout.HelpBox(
                 "Your MCP client (e.g. Cursor or Claude Desktop) will start the server automatically when you start it.",
                 MessageType.Info
             );
             EditorGUILayout.EndVertical();
+        }
 
-            EditorGUILayout.Space(10);
+        private void DrawPortSettings()
+        {
+            EditorGUI.indentLevel++;
 
-            // Unity Bridge Section
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            EditorGUILayout.LabelField("Unity MCP Bridge", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField($"Status: {(isUnityBridgeRunning ? "Running" : "Stopped")}");
-            EditorGUILayout.LabelField($"Port: {McpSettings.Instance.UnityPort}");
+            // Unity Port
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Unity Port:", GUILayout.Width(80));
+            unityPortInput = EditorGUILayout.TextField(unityPortInput, GUILayout.Width(60));
+            if (GUILayout.Button("Set", GUILayout.Width(40)))
+            {
+                if (int.TryParse(unityPortInput, out int newPort) && newPort > 0 && newPort <= 65535)
+                {
+                    if (isUnityBridgeRunning)
+                    {
+                        EditorUtility.DisplayDialog("Port Change", "Please stop the Unity Bridge before changing ports.", "OK");
+                    }
+                    else
+                    {
+                        McpSettings.Instance.UnityPort = newPort;
+                        McpLogger.LogInfo($"Unity port changed to {newPort}");
+                    }
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Invalid Port", "Please enter a valid port number (1-65535).", "OK");
+                    unityPortInput = McpSettings.Instance.UnityPort.ToString();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
 
-            if (GUILayout.Button(isUnityBridgeRunning ? "Stop Bridge" : "Start Bridge"))
+            // MCP Port
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("MCP Port:", GUILayout.Width(80));
+            mcpPortInput = EditorGUILayout.TextField(mcpPortInput, GUILayout.Width(60));
+            if (GUILayout.Button("Set", GUILayout.Width(40)))
+            {
+                if (int.TryParse(mcpPortInput, out int newPort) && newPort > 0 && newPort <= 65535)
+                {
+                    McpSettings.Instance.McpPort = newPort;
+                    McpLogger.LogInfo($"MCP port changed to {newPort}");
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Invalid Port", "Please enter a valid port number (1-65535).", "OK");
+                    mcpPortInput = McpSettings.Instance.McpPort.ToString();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Reset to Defaults"))
+            {
+                if (isUnityBridgeRunning)
+                {
+                    EditorUtility.DisplayDialog("Port Change", "Please stop the Unity Bridge before resetting ports.", "OK");
+                }
+                else
+                {
+                    McpSettings.Instance.ResetToDefaults();
+                    unityPortInput = McpSettings.Instance.UnityPort.ToString();
+                    mcpPortInput = McpSettings.Instance.McpPort.ToString();
+                    McpLogger.LogInfo("Ports reset to defaults (Unity: 6400, MCP: 6500)");
+                }
+            }
+
+            EditorGUI.indentLevel--;
+        }
+
+        private void DrawBridgeSection()
+        {
+            EditorGUILayout.BeginVertical(UnityMcpStyles.Box);
+            EditorGUILayout.LabelField("Unity MCP Bridge", UnityMcpStyles.HeaderLabel);
+
+            EditorGUILayout.BeginHorizontal();
+            Rect bridgeStatusRect = EditorGUILayout.BeginHorizontal(GUILayout.Height(20));
+            Color bridgeStatusColor = isUnityBridgeRunning ? UnityMcpStyles.Green : UnityMcpStyles.Red;
+            UnityMcpStyles.DrawStatusDot(bridgeStatusRect, bridgeStatusColor);
+            EditorGUILayout.LabelField($"      Status: {(isUnityBridgeRunning ? "Running" : "Stopped")}", GUILayout.Width(120));
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.LabelField($"Port: {McpSettings.Instance.UnityPort}", GUILayout.Width(100));
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button(isUnityBridgeRunning ? "Stop" : "Start", UnityMcpStyles.SmallButton, GUILayout.Width(80)))
             {
                 ToggleUnityBridge();
             }
-            
-            if (isUnityBridgeRunning && GUILayout.Button("Test Connection"))
+
+            using (new EditorGUI.DisabledScope(!isUnityBridgeRunning))
             {
-                TestTcpConnection();
+                if (GUILayout.Button("Test", UnityMcpStyles.SmallButton, GUILayout.Width(60)))
+                {
+                    TestTcpConnection();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (isUnityBridgeRunning)
+            {
+                EditorGUILayout.Space(5);
+                DrawConnectionsSection();
             }
             EditorGUILayout.EndVertical();
+        }
 
-            foreach (McpClient mcpClient in mcpClients.clients)
+        private void DrawConnectionsSection()
+        {
+            EditorGUILayout.LabelField("Active Connections", UnityMcpStyles.BoldLabel);
+
+            EditorGUILayout.BeginVertical(UnityMcpStyles.Box);
+            if (UnityMcpBridge.ConnectedClients.Count > 0)
             {
-                EditorGUILayout.Space(10);
-                ConfigurationSection(mcpClient);
+                foreach (var client in UnityMcpBridge.ConnectedClients)
+                {
+                    EditorGUILayout.LabelField($"- {client.EndPoint} - {client.CurrentCommand}", UnityMcpStyles.WrappedLabel);
+                }
+            }
+            else
+            {
+                EditorGUILayout.LabelField("No active connections.");
+            }
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawConfigurationSections()
+        {
+            EditorGUILayout.BeginVertical(UnityMcpStyles.Box);
+            EditorGUILayout.LabelField("MCP Client Configurations", UnityMcpStyles.HeaderLabel);
+            EditorGUILayout.Space();
+
+            if (mcpClients.clients.Count == 0)
+            {
+                EditorGUILayout.HelpBox("No MCP client configurations found.", MessageType.Info);
+                EditorGUILayout.EndVertical();
+                return;
             }
 
-            EditorGUILayout.EndScrollView();
+            string[] tabNames = mcpClients.clients.ConvertAll(c => c.name).ToArray();
+            _selectedTab = GUILayout.Toolbar(_selectedTab, tabNames);
+
+            if (_selectedTab >= 0 && _selectedTab < mcpClients.clients.Count)
+            {
+                DrawConfigurationSection(mcpClients.clients[_selectedTab]);
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawConfigurationSection(McpClient mcpClient)
+        {
+            EditorGUILayout.BeginVertical();
+            EditorGUILayout.Space();
+
+            Rect statusRect = EditorGUILayout.BeginHorizontal(GUILayout.Height(20));
+            Color statusColor = UnityMcpStyles.GetStatusColor(mcpClient.status);
+            UnityMcpStyles.DrawStatusDot(statusRect, statusColor);
+            EditorGUILayout.LabelField("      " + mcpClient.configStatus, UnityMcpStyles.WrappedLabel);
+            EditorGUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Copy MCP JSON", UnityMcpStyles.MutedButton))
+            {
+                CopyMcpJsonToClipboard(mcpClient);
+            }
+
+            if (GUILayout.Button($"Auto Configure {mcpClient.name}", UnityMcpStyles.Button))
+            {
+                ConfigureMcpClient(mcpClient);
+            }
+
+            if (GUILayout.Button("Manual Setup", UnityMcpStyles.MutedButton))
+            {
+                string configPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? mcpClient.windowsConfigPath
+                    : mcpClient.linuxConfigPath;
+                ShowManualInstructionsWindow(configPath, mcpClient);
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void CopyMcpJsonToClipboard(McpClient mcpClient)
+        {
+            string configPath = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? mcpClient.windowsConfigPath
+                : mcpClient.linuxConfigPath;
+
+            string fullPath = Path.GetFullPath(configPath.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)));
+
+            if (File.Exists(fullPath))
+            {
+                string jsonContent = File.ReadAllText(fullPath);
+                EditorGUIUtility.systemCopyBuffer = jsonContent;
+                ShowNotification(new GUIContent("MCP JSON copied to clipboard!"));
+            }
+            else
+            {
+                ShowNotification(new GUIContent("MCP JSON file not found."));
+            }
         }
 
         private void ToggleUnityBridge()
@@ -363,13 +334,13 @@ namespace UnityMcpBridge.Editor.Windows
             if (isUnityBridgeRunning)
             {
                 UnityMcpBridge.Stop();
+                isUnityBridgeRunning = false;
             }
             else
             {
                 UnityMcpBridge.Start();
+                isUnityBridgeRunning = true;
             }
-
-            isUnityBridgeRunning = !isUnityBridgeRunning;
         }
 
         private string WriteToConfig(string pythonDir, string configPath)
