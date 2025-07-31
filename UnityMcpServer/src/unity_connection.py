@@ -186,17 +186,17 @@ class UnityConnection:
                 estimated_tokens = len(result_str) // 4
                 
                 # If response is very large, cache it and return a reference
-                # if estimated_tokens > 15000:
-                #     cache = get_cache('response')
-                #     metadata = {
-                #         "tool": command_type,
-                #         "params": params,
-                #         "size_bytes": len(result_str.encode('utf-8')),
-                #         "estimated_tokens": estimated_tokens
-                #     }
-                #     cache_id = cache.add(data, metadata)
-                #     
-                #     logger.info(f"Large response cached with ID: {cache_id} (tokens: {estimated_tokens})")
+                if estimated_tokens > 15000:
+                    cache = get_cache('response')
+                    metadata = {
+                        "tool": command_type,
+                        "params": params,
+                        "size_bytes": len(result_str.encode('utf-8')),
+                        "estimated_tokens": estimated_tokens
+                    }
+                    cache_id = cache.add(data, metadata)
+                    
+                    logger.info(f"Large response cached with ID: {cache_id} (tokens: {estimated_tokens})")
                     
                     # Return a modified result that includes the cache ID
                     return {
