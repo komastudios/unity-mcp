@@ -72,7 +72,8 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
 mcp = FastMCP(
     "unity-mcp-server",
     description="Unity Editor integration via Model Context Protocol",
-    lifespan=server_lifespan
+    lifespan=server_lifespan,
+    middleware=[]
 )
 
 # Register all tools

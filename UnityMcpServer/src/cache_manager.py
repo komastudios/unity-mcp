@@ -290,10 +290,13 @@ class ResponseCache:
             del self._cache[cache_id]
 
 
-# Global cache instance
-_response_cache = ResponseCache()
+# Global cache instances
+_cache_instances: Dict[str, ResponseCache] = {}
 
 
-def get_cache() -> ResponseCache:
-    """Get the global response cache instance."""
-    return _response_cache
+def get_cache(name: str = 'default') -> ResponseCache:
+    """Get a named cache instance."""
+    if name not in _cache_instances:
+        _cache_instances[name] = ResponseCache()
+    
+    return _cache_instances[name]

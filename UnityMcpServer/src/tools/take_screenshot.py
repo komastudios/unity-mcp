@@ -49,8 +49,13 @@ def register_take_screenshot_tools(mcp: FastMCP):
             }
             params = {k: v for k, v in params.items() if v is not None}
             
+            # Get Unity connection
+            connection = get_unity_connection()
+            if not connection:
+                raise ConnectionError("Failed to get Unity connection. Is the editor running?")
+            
             # Send command to Unity
-            response = get_unity_connection().send_command("take_screenshot", params)
+            response = connection.send_command("take_screenshot", params)
             
             if not response.get("success"):
                 raise Exception(response.get("error", "Failed to take screenshot"))

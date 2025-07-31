@@ -1,8 +1,9 @@
 import socket
 import json
 import logging
+import threading
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from config import config
 from cache_manager import get_cache
 
@@ -223,45 +224,48 @@ class UnityConnection:
             self.sock = None
             raise Exception(f"Failed to communicate with Unity: {str(e)}")
 
-# Global Unity connection
+# Global Unity connection and lock
 _unity_connection = None
+_connection_lock = threading.Lock()
 
-def get_unity_connection() -> UnityConnection:
+def get_unity_connection() -> Optional[UnityConnection]:
     """Retrieve or establish a persistent Unity connection."""
     global _unity_connection
-    if _unity_connection is not None:
+    with _connection_lock:
+        if _unity_connection is not None:
+            try:
+                # Try to ping with a short timeout to verify connection
+                result = _unity_connection.send_command("ping")
+                # If we get here, the connection is still valid
+                logger.debug("Reusing existing Unity connection")
+                return _unity_connection
+            except Exception as e:
+                logger.warning(f"Existing connection failed: {str(e)}")
+                try:
+                    _unity_connection.disconnect()
+                except:
+                    pass
+                _unity_connection = None
+        
+        # Create a new connection
+        logger.info("Creating new Unity connection")
+        new_connection = UnityConnection()
+        logger.info(f"Unity connection configured for {new_connection.host}:{new_connection.port}")
+        if not new_connection.connect():
+            logger.error("Could not connect to Unity. Ensure the Unity Editor and MCP Bridge are running.")
+            return None
+        
         try:
-            # Try to ping with a short timeout to verify connection
-            result = _unity_connection.send_command("ping")
-            # If we get here, the connection is still valid
-            logger.debug("Reusing existing Unity connection")
+            # Verify the new connection works
+            new_connection.send_command("ping")
+            logger.info("Successfully established new Unity connection")
+            _unity_connection = new_connection
             return _unity_connection
         except Exception as e:
-            logger.warning(f"Existing connection failed: {str(e)}")
+            logger.error(f"Could not verify new connection: {str(e)}")
             try:
-                _unity_connection.disconnect()
+                new_connection.disconnect()
             except:
                 pass
-            _unity_connection = None
-    
-    # Create a new connection
-    logger.info("Creating new Unity connection")
-    _unity_connection = UnityConnection()
-    logger.info(f"Unity connection configured for {_unity_connection.host}:{_unity_connection.port}")
-    if not _unity_connection.connect():
-        _unity_connection = None
-        raise ConnectionError("Could not connect to Unity. Ensure the Unity Editor and MCP Bridge are running.")
-    
-    try:
-        # Verify the new connection works
-        _unity_connection.send_command("ping")
-        logger.info("Successfully established new Unity connection")
-        return _unity_connection
-    except Exception as e:
-        logger.error(f"Could not verify new connection: {str(e)}")
-        try:
-            _unity_connection.disconnect()
-        except:
-            pass
-        _unity_connection = None
-        raise ConnectionError(f"Could not establish valid Unity connection: {str(e)}")
+            logger.error(f"Could not establish valid Unity connection: {str(e)}")
+            return None
