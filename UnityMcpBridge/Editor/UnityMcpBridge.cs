@@ -16,10 +16,28 @@ using UnityMcpBridge.Editor.Tools;
 namespace UnityMcpBridge.Editor
 {
     [InitializeOnLoad]
+    public class ClientAction
+    {
+        public DateTime Timestamp { get; set; }
+        public string Action { get; set; }
+    }
+
     public class ClientState
     {
         public string EndPoint { get; set; }
         public string CurrentCommand { get; set; }
+        public List<ClientAction> LastActions { get; } = new List<ClientAction>();
+        public bool IsExpanded { get; set; } = false;
+        public Vector2 ActionScrollPosition; // Add this
+
+        public void AddAction(string action)
+        {
+            LastActions.Add(new ClientAction { Timestamp = DateTime.Now, Action = action });
+            if (LastActions.Count > 10)
+            {
+                LastActions.RemoveAt(0);
+            }
+        }
     }
 
     public static partial class UnityMcpBridge
@@ -170,6 +188,7 @@ namespace UnityMcpBridge.Editor
                 EndPoint = client.Client.RemoteEndPoint.ToString(),
                 CurrentCommand = "Idle"
             };
+            clientState.AddAction("Connected");
             ConnectedClients.Add(clientState);
 
             try
@@ -185,6 +204,7 @@ namespace UnityMcpBridge.Editor
                             int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                             if (bytesRead == 0)
                             {
+                                clientState.AddAction("Disconnected");
                                 break; // Client disconnected
                             }
 
@@ -193,6 +213,36 @@ namespace UnityMcpBridge.Editor
                                 0,
                                 bytesRead
                             );
+                            try
+                            {
+                                var commandJson = JObject.Parse(commandText);
+                                string action = commandJson["action"]?.ToString();
+                                string tool = commandJson["tool_name"]?.ToString();
+                                string type = commandJson["type"]?.ToString();
+
+                                string actionLog;
+                                if (!string.IsNullOrEmpty(tool))
+                                {
+                                    actionLog = $"Tool: {tool}";
+                                }
+                                else if (!string.IsNullOrEmpty(action))
+                                {
+                                    actionLog = $"Action: {action}";
+                                }
+                                else if (!string.IsNullOrEmpty(type))
+                                {
+                                    actionLog = $"Command: {type}";
+                                }
+                                else
+                                {
+                                    actionLog = "unknown_action";
+                                }
+                                clientState.AddAction(actionLog);
+                            }
+                            catch (JsonReaderException)
+                            {
+                                clientState.AddAction($"Received: {commandText.Trim()}");
+                            }
                             string commandId = Guid.NewGuid().ToString();
                             TaskCompletionSource<string> tcs = new();
 

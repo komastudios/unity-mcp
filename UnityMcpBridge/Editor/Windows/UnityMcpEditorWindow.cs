@@ -231,6 +231,7 @@ namespace UnityMcpBridge.Editor.Windows
                 EditorGUILayout.Space(5);
                 DrawConnectionsSection();
             }
+
             EditorGUILayout.EndVertical();
         }
 
@@ -244,6 +245,18 @@ namespace UnityMcpBridge.Editor.Windows
                 foreach (var client in UnityMcpBridge.ConnectedClients)
                 {
                     EditorGUILayout.LabelField($"- {client.EndPoint} - {client.CurrentCommand}", UnityMcpStyles.WrappedLabel);
+                    client.IsExpanded = EditorGUILayout.Foldout(client.IsExpanded, "Action History", true);
+                    if (client.IsExpanded)
+                    {
+                        EditorGUI.indentLevel++;
+                        client.ActionScrollPosition = EditorGUILayout.BeginScrollView(client.ActionScrollPosition, GUILayout.Height(120));
+                        foreach (var action in client.LastActions)
+                        {
+                            EditorGUILayout.SelectableLabel($"{action.Timestamp:HH:mm:ss} - {action.Action}", GUILayout.Height(EditorGUIUtility.singleLineHeight));
+                        }
+                        EditorGUILayout.EndScrollView();
+                        EditorGUI.indentLevel--;
+                    }
                 }
             }
             else
