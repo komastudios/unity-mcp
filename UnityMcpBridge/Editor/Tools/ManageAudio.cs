@@ -404,7 +404,7 @@ namespace UnityMcpBridge.Editor.Tools
                     }
                 }
 
-                AudioMixer mixer = AudioMixer.CreateInstance<AudioMixer>();
+                AudioMixer mixer = ScriptableObject.CreateInstance<AudioMixer>();
                 mixer.name = name;
 
                 string fullPath = $"{path}/{name}.mixer";
@@ -604,8 +604,6 @@ namespace UnityMcpBridge.Editor.Tools
                     return Response.Success("Global audio settings.", new
                     {
                         globalVolume = AudioListener.volume,
-                        velocityUpdateMode = AudioSettings.velocityUpdateMode.ToString(),
-                        dspBufferSize = AudioSettings.dspBufferSize,
                         sampleRate = AudioSettings.outputSampleRate
                     });
                 }
@@ -666,8 +664,16 @@ namespace UnityMcpBridge.Editor.Tools
                         if (@params["load_in_background"] != null)
                             importer.loadInBackground = @params["load_in_background"].ToObject<bool>();
                         
+                        // Note: preloadAudioData is now per-platform setting in SampleSettings
+                        // This is a simplified version for backwards compatibility
                         if (@params["preload_audio_data"] != null)
-                            importer.preloadAudioData = @params["preload_audio_data"].ToObject<bool>();
+                        {
+                            var sampleSettings = importer.defaultSampleSettings;
+                            sampleSettings.loadType = @params["preload_audio_data"].ToObject<bool>() 
+                                ? AudioClipLoadType.DecompressOnLoad 
+                                : AudioClipLoadType.CompressedInMemory;
+                            importer.defaultSampleSettings = sampleSettings;
+                        }
 
                         importer.SaveAndReimport();
                     }
@@ -711,13 +717,13 @@ namespace UnityMcpBridge.Editor.Tools
             try
             {
                 // Check if there's already an AudioListener in the scene
-                AudioListener existingListener = GameObject.FindObjectOfType<AudioListener>();
+                AudioListener existingListener = GameObject.FindFirstObjectByType<AudioListener>();
                 if (existingListener != null && existingListener.gameObject != targetObject)
                 {
                     bool removeExisting = @params["remove_existing"]?.ToObject<bool>() ?? false;
                     if (removeExisting)
                     {
-                        DestroyImmediate(existingListener);
+                        Object.DestroyImmediate(existingListener);
                     }
                     else
                     {
@@ -735,8 +741,7 @@ namespace UnityMcpBridge.Editor.Tools
 
                 return Response.Success($"AudioListener added to '{gameObjectName}'.", new
                 {
-                    gameObjectName = gameObjectName,
-                    velocityUpdateMode = AudioSettings.velocityUpdateMode.ToString()
+                    gameObjectName = gameObjectName
                 });
             }
             catch (Exception e)

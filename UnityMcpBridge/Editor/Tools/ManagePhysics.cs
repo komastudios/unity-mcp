@@ -87,9 +87,9 @@ namespace UnityMcpBridge.Editor.Tools
                 if (@params["mass"] != null)
                     rb.mass = @params["mass"].ToObject<float>();
                 if (@params["drag"] != null)
-                    rb.drag = @params["drag"].ToObject<float>();
+                    rb.linearDamping = @params["drag"].ToObject<float>();
                 if (@params["angular_drag"] != null)
-                    rb.angularDrag = @params["angular_drag"].ToObject<float>();
+                    rb.angularDamping = @params["angular_drag"].ToObject<float>();
                 if (@params["use_gravity"] != null)
                     rb.useGravity = @params["use_gravity"].ToObject<bool>();
                 if (@params["is_kinematic"] != null)
@@ -122,8 +122,8 @@ namespace UnityMcpBridge.Editor.Tools
                 {
                     gameObjectName = gameObjectName,
                     mass = rb.mass,
-                    drag = rb.drag,
-                    angularDrag = rb.angularDrag,
+                    drag = rb.linearDamping,
+                    angularDrag = rb.angularDamping,
                     useGravity = rb.useGravity,
                     isKinematic = rb.isKinematic,
                     constraints = rb.constraints.ToString()
@@ -161,9 +161,9 @@ namespace UnityMcpBridge.Editor.Tools
                 if (@params["mass"] != null)
                     rb.mass = @params["mass"].ToObject<float>();
                 if (@params["drag"] != null)
-                    rb.drag = @params["drag"].ToObject<float>();
+                    rb.linearDamping = @params["drag"].ToObject<float>();
                 if (@params["angular_drag"] != null)
-                    rb.angularDrag = @params["angular_drag"].ToObject<float>();
+                    rb.angularDamping = @params["angular_drag"].ToObject<float>();
                 if (@params["use_gravity"] != null)
                     rb.useGravity = @params["use_gravity"].ToObject<bool>();
                 if (@params["is_kinematic"] != null)
@@ -175,8 +175,8 @@ namespace UnityMcpBridge.Editor.Tools
                 {
                     gameObjectName = gameObjectName,
                     mass = rb.mass,
-                    drag = rb.drag,
-                    angularDrag = rb.angularDrag,
+                    drag = rb.linearDamping,
+                    angularDrag = rb.angularDamping,
                     useGravity = rb.useGravity,
                     isKinematic = rb.isKinematic
                 });
@@ -253,30 +253,47 @@ namespace UnityMcpBridge.Editor.Tools
                 if (@params["center"] != null)
                 {
                     JObject center = @params["center"] as JObject;
-                    collider.center = new Vector3(
+                    Vector3 centerVector = new Vector3(
                         center["x"]?.ToObject<float>() ?? 0f,
                         center["y"]?.ToObject<float>() ?? 0f,
                         center["z"]?.ToObject<float>() ?? 0f
                     );
+                    
+                    // Set center based on collider type
+                    if (collider is BoxCollider boxCollider)
+                        boxCollider.center = centerVector;
+                    else if (collider is SphereCollider sphereCollider)
+                        sphereCollider.center = centerVector;
+                    else if (collider is CapsuleCollider capsuleCollider)
+                        capsuleCollider.center = centerVector;
                 }
 
                 // Apply physics material if specified
                 if (@params["physics_material"] != null)
                 {
                     string materialPath = @params["physics_material"].ToString();
-                    PhysicMaterial material = AssetDatabase.LoadAssetAtPath<PhysicMaterial>(materialPath);
+                    PhysicsMaterial material = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(materialPath);
                     if (material != null)
                         collider.material = material;
                 }
 
                 EditorUtility.SetDirty(targetObject);
 
+                // Get center based on collider type for response
+                Vector3 centerVector = Vector3.zero;
+                if (collider is BoxCollider boxCol)
+                    centerVector = boxCol.center;
+                else if (collider is SphereCollider sphereCol)
+                    centerVector = sphereCol.center;
+                else if (collider is CapsuleCollider capsuleCol)
+                    centerVector = capsuleCol.center;
+
                 return Response.Success($"{colliderType} collider added to '{gameObjectName}'.", new
                 {
                     gameObjectName = gameObjectName,
                     colliderType = colliderType,
                     isTrigger = collider.isTrigger,
-                    center = new { x = collider.center.x, y = collider.center.y, z = collider.center.z }
+                    center = new { x = centerVector.x, y = centerVector.y, z = centerVector.z }
                 });
             }
             catch (Exception e)
@@ -314,11 +331,19 @@ namespace UnityMcpBridge.Editor.Tools
                 if (@params["center"] != null)
                 {
                     JObject center = @params["center"] as JObject;
-                    collider.center = new Vector3(
-                        center["x"]?.ToObject<float>() ?? collider.center.x,
-                        center["y"]?.ToObject<float>() ?? collider.center.y,
-                        center["z"]?.ToObject<float>() ?? collider.center.z
+                    Vector3 centerVector = new Vector3(
+                        center["x"]?.ToObject<float>() ?? 0f,
+                        center["y"]?.ToObject<float>() ?? 0f,
+                        center["z"]?.ToObject<float>() ?? 0f
                     );
+
+                    // Set center based on collider type
+                    if (collider is BoxCollider boxCol)
+                        boxCol.center = centerVector;
+                    else if (collider is SphereCollider sphereCol)
+                        sphereCol.center = centerVector;
+                    else if (collider is CapsuleCollider capsuleCol)
+                        capsuleCol.center = centerVector;
                 }
 
                 // Type-specific modifications
@@ -345,12 +370,21 @@ namespace UnityMcpBridge.Editor.Tools
 
                 EditorUtility.SetDirty(targetObject);
 
+                // Get center based on collider type for response
+                Vector3 centerVector = Vector3.zero;
+                if (collider is BoxCollider boxCol)
+                    centerVector = boxCol.center;
+                else if (collider is SphereCollider sphereCol)
+                    centerVector = sphereCol.center;
+                else if (collider is CapsuleCollider capsuleCol)
+                    centerVector = capsuleCol.center;
+
                 return Response.Success($"Collider on '{gameObjectName}' modified successfully.", new
                 {
                     gameObjectName = gameObjectName,
                     colliderType = collider.GetType().Name,
                     isTrigger = collider.isTrigger,
-                    center = new { x = collider.center.x, y = collider.center.y, z = collider.center.z }
+                    center = new { x = centerVector.x, y = centerVector.y, z = centerVector.z }
                 });
             }
             catch (Exception e)
@@ -645,18 +679,28 @@ namespace UnityMcpBridge.Editor.Tools
                         rigidbody = rb != null ? new
                         {
                             mass = rb.mass,
-                            drag = rb.drag,
-                            angularDrag = rb.angularDrag,
+                            drag = rb.linearDamping,
+                            angularDrag = rb.angularDamping,
                             useGravity = rb.useGravity,
                             isKinematic = rb.isKinematic,
-                            velocity = new { x = rb.velocity.x, y = rb.velocity.y, z = rb.velocity.z },
+                            velocity = new { x = rb.linearVelocity.x, y = rb.linearVelocity.y, z = rb.linearVelocity.z },
                             angularVelocity = new { x = rb.angularVelocity.x, y = rb.angularVelocity.y, z = rb.angularVelocity.z }
                         } : null,
-                        colliders = colliders.Select(c => new
-                        {
-                            type = c.GetType().Name,
-                            isTrigger = c.isTrigger,
-                            center = new { x = c.center.x, y = c.center.y, z = c.center.z }
+                        colliders = colliders.Select(c => {
+                            Vector3 centerVector = Vector3.zero;
+                            if (c is BoxCollider boxCol)
+                                centerVector = boxCol.center;
+                            else if (c is SphereCollider sphereCol)
+                                centerVector = sphereCol.center;
+                            else if (c is CapsuleCollider capsuleCol)
+                                centerVector = capsuleCol.center;
+                            
+                            return new
+                            {
+                                type = c.GetType().Name,
+                                isTrigger = c.isTrigger,
+                                center = new { x = centerVector.x, y = centerVector.y, z = centerVector.z }
+                            };
                         }).ToArray(),
                         joints = joints.Select(j => new
                         {
@@ -712,7 +756,7 @@ namespace UnityMcpBridge.Editor.Tools
                     }
                 }
 
-                PhysicMaterial material = new PhysicMaterial(name);
+                PhysicsMaterial material = new PhysicsMaterial(name);
                 
                 if (@params["dynamic_friction"] != null)
                     material.dynamicFriction = @params["dynamic_friction"].ToObject<float>();
@@ -723,12 +767,12 @@ namespace UnityMcpBridge.Editor.Tools
                 if (@params["friction_combine"] != null)
                 {
                     string combineMode = @params["friction_combine"].ToString();
-                    material.frictionCombine = (PhysicMaterialCombine)Enum.Parse(typeof(PhysicMaterialCombine), combineMode);
+                    material.frictionCombine = (PhysicsMaterialCombine)Enum.Parse(typeof(PhysicsMaterialCombine), combineMode);
                 }
                 if (@params["bounce_combine"] != null)
                 {
                     string combineMode = @params["bounce_combine"].ToString();
-                    material.bounceCombine = (PhysicMaterialCombine)Enum.Parse(typeof(PhysicMaterialCombine), combineMode);
+                    material.bounceCombine = (PhysicsMaterialCombine)Enum.Parse(typeof(PhysicsMaterialCombine), combineMode);
                 }
 
                 string fullPath = $"{path}/{name}.physicMaterial";

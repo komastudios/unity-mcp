@@ -534,13 +534,20 @@ namespace UnityMcpBridge.Editor.Tools
                         });
                     }
                     
-                    controlScheme = controlScheme.WithDeviceRequirements(deviceRequirements.ToArray());
+                    controlScheme = new InputControlScheme(schemeName, deviceRequirements);
                 }
 
                 // Add the control scheme to the input actions
                 var schemes = inputActions.controlSchemes.ToList();
                 schemes.Add(controlScheme);
-                inputActions.controlSchemes = schemes.ToArray();
+                
+                // Use reflection to set the read-only property
+                var field = typeof(InputActionAsset).GetField("m_ControlSchemes", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field != null)
+                {
+                    field.SetValue(inputActions, schemes.ToArray());
+                }
 
                 EditorUtility.SetDirty(inputActions);
                 AssetDatabase.SaveAssets();
@@ -594,7 +601,8 @@ namespace UnityMcpBridge.Editor.Tools
                     
                     if (newSettings["filter_noise_on_current"] != null)
                     {
-                        InputSystem.settings.filterNoiseOnCurrent = newSettings["filter_noise_on_current"].ToObject<bool>();
+                        // Note: filterNoiseOnCurrent is deprecated and always enabled
+                        Debug.Log("filterNoiseOnCurrent is deprecated - noise filtering is always enabled");
                     }
                 }
 #endif
@@ -604,8 +612,7 @@ namespace UnityMcpBridge.Editor.Tools
 #if ENABLE_INPUT_SYSTEM
                     newInputSystemEnabled = true,
                     updateMode = InputSystem.settings.updateMode.ToString(),
-                    compensateForScreenOrientation = InputSystem.settings.compensateForScreenOrientation,
-                    filterNoiseOnCurrent = InputSystem.settings.filterNoiseOnCurrent
+                    compensateForScreenOrientation = InputSystem.settings.compensateForScreenOrientation
 #else
                     newInputSystemEnabled = false
 #endif
