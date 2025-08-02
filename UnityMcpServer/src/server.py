@@ -73,7 +73,8 @@ mcp = FastMCP(
     "unity-mcp-server",
     description="Unity Editor integration via Model Context Protocol",
     lifespan=server_lifespan,
-    middleware=[]
+    middleware=[],
+    enable_cache=False
 )
 
 # Register all tools

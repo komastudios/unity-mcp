@@ -132,15 +132,10 @@ def register_take_screenshot_tools(mcp: FastMCP):
             if save_to_path:
                 metadata["savedToPath"] = response_data.get("savedPath", save_to_path)
             
-            # Create Image object
-            image = Image(
-                data=image_bytes,
-                format=format.lower()
-            )
-            
-            # Return both image and metadata
+            # Return image data as base64 string instead of Image object to avoid serialization issues
             return {
-                "image": image,
+                "success": True,
+                "image_data": base64.b64encode(image_bytes).decode('utf-8'),
                 "metadata": metadata
             }
             

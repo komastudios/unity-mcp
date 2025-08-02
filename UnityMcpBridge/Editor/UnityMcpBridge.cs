@@ -354,6 +354,26 @@ namespace UnityMcpBridge.Editor
                                 ScreenshotTool.TakeScreenshot(commandData.@params.ToObject<Dictionary<string, object>>())                            
                             );
                             break;
+                        case "manage_animation":
+                            result = JObject.FromObject(
+                                ManageAnimation.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_physics":
+                            result = JObject.FromObject(
+                                ManagePhysics.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_audio":
+                            result = JObject.FromObject(
+                                ManageAudio.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_input":
+                            result = JObject.FromObject(
+                                ManageInput.HandleCommand(commandData.@params)
+                            );
+                            break;
                         case "trigger_domain_reload":
                             result = JObject.FromObject(
                                 TriggerDomainReload.HandleCommand(commandData.@params)

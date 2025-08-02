@@ -3,6 +3,10 @@ from .manage_scene import register_manage_scene_tools
 from .manage_editor import register_manage_editor_tools
 from .manage_gameobject import register_manage_gameobject_tools
 from .manage_asset import register_manage_asset_tools
+from .manage_animation import register_manage_animation_tools
+from .manage_physics import register_manage_physics_tools
+from .manage_audio import register_manage_audio_tools
+from .manage_input import register_manage_input_tools
 from .read_console import register_read_console_tools
 from .execute_menu_item import register_execute_menu_item_tools
 from .take_screenshot import register_take_screenshot_tools
@@ -18,10 +22,14 @@ def register_all_tools(mcp):
     register_manage_editor_tools(mcp)
     register_manage_gameobject_tools(mcp)
     register_manage_asset_tools(mcp)
+    register_manage_animation_tools(mcp)
+    register_manage_physics_tools(mcp)
+    register_manage_audio_tools(mcp)
+    register_manage_input_tools(mcp)
     register_read_console_tools(mcp)
     register_execute_menu_item_tools(mcp)
     register_take_screenshot_tools(mcp)
     register_fetch_cached_response_tools(mcp)
     register_domain_reload_tools(mcp)
     register_unity_diagnostics_tools(mcp)
-    print("Unity MCP Server tool registration complete.")
+    print("All Unity MCP Server tools registered successfully!")
