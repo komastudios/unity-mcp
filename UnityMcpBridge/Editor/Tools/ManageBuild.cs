@@ -13,127 +13,123 @@ namespace UnityMcpBridge.Tools
 {
     public static class ManageBuild
     {
-        public static object HandleCommand(JObject parameters)
+        public static JObject HandleCommand(JObject parameters)
         {
-            return HandleBuildCommand(parameters.ToString());
+            return HandleBuildCommand(parameters);
         }
 
-        public static string HandleBuildCommand(string jsonData)
+        public static JObject HandleBuildCommand(JObject parameters)
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                string action = parameters["action"]?.ToString();
 
                 return action switch
                 {
-                    "create_build" => CreateBuild(data),
-                    "configure_build" => ConfigureBuild(data),
+                    "create_build" => CreateBuild(parameters),
+                    "configure_build" => ConfigureBuild(parameters),
                     "list_builds" => ListBuilds(),
-                    "get_build_info" => GetBuildInfo(data),
-                    "build_project" => BuildProject(data),
-                    "get_build_log" => GetBuildLog(data),
-                    "validate_build" => ValidateBuild(data),
-                    _ => JsonConvert.SerializeObject(new { error = $"Unknown action: {action}" })
+                    "get_build_info" => GetBuildInfo(parameters),
+                    "build_project" => BuildProject(parameters),
+                    "get_build_log" => GetBuildLog(parameters),
+                    "validate_build" => ValidateBuild(parameters),
+                    _ => new JObject { ["error"] = $"Unknown action: {action}" }
                 };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        public static string HandleAssetBundleCommand(string jsonData)
+        public static JObject HandleAssetBundleCommand(JObject parameters)
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                string action = parameters["action"]?.ToString();
 
                 return action switch
                 {
-                    "create_bundle" => CreateAssetBundle(data),
-                    "add_assets" => AddAssetsToBundle(data),
-                    "remove_assets" => RemoveAssetsFromBundle(data),
-                    "build_bundles" => BuildAssetBundles(data),
+                    "create_bundle" => CreateAssetBundle(parameters),
+                    "add_assets" => AddAssetsToBundle(parameters),
+                    "remove_assets" => RemoveAssetsFromBundle(parameters),
+                    "build_bundles" => BuildAssetBundles(parameters),
                     "list_bundles" => ListAssetBundles(),
-                    "get_bundle_info" => GetAssetBundleInfo(data),
-                    "delete_bundle" => DeleteAssetBundle(data),
+                    "get_bundle_info" => GetAssetBundleInfo(parameters),
+                    "delete_bundle" => DeleteAssetBundle(parameters),
                     "validate_bundles" => ValidateAssetBundles(),
-                    _ => JsonConvert.SerializeObject(new { error = $"Unknown action: {action}" })
+                    _ => new JObject { ["error"] = $"Unknown action: {action}" }
                 };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        public static string HandleBuildPipelineCommand(string jsonData)
+        public static JObject HandleBuildPipelineCommand(JObject parameters)
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                string action = parameters["action"]?.ToString();
 
                 return action switch
                 {
-                    "create_pipeline" => CreateBuildPipeline(data),
-                    "modify_pipeline" => ModifyBuildPipeline(data),
-                    "run_pipeline" => RunBuildPipeline(data),
+                    "create_pipeline" => CreateBuildPipeline(parameters),
+                    "modify_pipeline" => ModifyBuildPipeline(parameters),
+                    "run_pipeline" => RunBuildPipeline(parameters),
                     "list_pipelines" => ListBuildPipelines(),
-                    "get_pipeline_info" => GetBuildPipelineInfo(data),
-                    "delete_pipeline" => DeleteBuildPipeline(data),
-                    "validate_pipeline" => ValidateBuildPipeline(data),
-                    "get_pipeline_logs" => GetBuildPipelineLogs(data),
-                    _ => JsonConvert.SerializeObject(new { error = $"Unknown action: {action}" })
+                    "get_pipeline_info" => GetBuildPipelineInfo(parameters),
+                    "delete_pipeline" => DeleteBuildPipeline(parameters),
+                    "validate_pipeline" => ValidateBuildPipeline(parameters),
+                    "get_pipeline_logs" => GetBuildPipelineLogs(parameters),
+                    _ => new JObject { ["error"] = $"Unknown action: {action}" }
                 };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        public static string HandleDeploymentCommand(string jsonData)
+        public static JObject HandleDeploymentCommand(JObject parameters)
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                string action = parameters["action"]?.ToString();
 
                 return action switch
                 {
-                    "deploy_build" => DeployBuild(data),
-                    "configure_deployment" => ConfigureDeployment(data),
+                    "deploy_build" => DeployBuild(parameters),
+                    "configure_deployment" => ConfigureDeployment(parameters),
                     "list_deployments" => ListDeployments(),
-                    "get_deployment_status" => GetDeploymentStatus(data),
-                    "rollback_deployment" => RollbackDeployment(data),
-                    "validate_deployment" => ValidateDeployment(data),
-                    "get_deployment_logs" => GetDeploymentLogs(data),
-                    _ => JsonConvert.SerializeObject(new { error = $"Unknown action: {action}" })
+                    "get_deployment_status" => GetDeploymentStatus(parameters),
+                    "rollback_deployment" => RollbackDeployment(parameters),
+                    "validate_deployment" => ValidateDeployment(parameters),
+                    "get_deployment_logs" => GetDeploymentLogs(parameters),
+                    _ => new JObject { ["error"] = $"Unknown action: {action}" }
                 };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string CreateBuild(Dictionary<string, object> data)
+        private static JObject CreateBuild(JObject parameters)
         {
             try
             {
-                var buildTarget = ParseBuildTarget(data.GetValueOrDefault("build_target", "").ToString());
-                var buildPath = data.GetValueOrDefault("build_path", "").ToString();
-                var scenes = data.ContainsKey("scenes") ? 
-                    JsonConvert.DeserializeObject<string[]>(data["scenes"].ToString()) : 
+                var buildTarget = ParseBuildTarget(parameters["build_target"]?.ToString() ?? "");
+                var buildPath = parameters["build_path"]?.ToString() ?? "";
+                var scenes = parameters["scenes"] != null ? 
+                    parameters["scenes"].ToObject<string[]>() : 
                     EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();
 
                 var buildOptions = BuildOptions.None;
-                if (data.ContainsKey("development_build") && bool.Parse(data["development_build"].ToString()))
+                if (parameters["development_build"]?.ToObject<bool>() ?? false)
                     buildOptions |= BuildOptions.Development;
-                if (data.ContainsKey("script_debugging") && bool.Parse(data["script_debugging"].ToString()))
+                if (parameters["script_debugging"]?.ToObject<bool>() ?? false)
                     buildOptions |= BuildOptions.AllowDebugging;
 
                 var buildPlayerOptions = new BuildPlayerOptions
@@ -146,144 +142,144 @@ namespace UnityMcpBridge.Tools
 
                 var report = BuildPipeline.BuildPlayer(buildPlayerOptions);
                 
-                return JsonConvert.SerializeObject(new
+                return new JObject
                 {
-                    success = report.summary.result == BuildResult.Succeeded,
-                    result = report.summary.result.ToString(),
-                    totalTime = report.summary.totalTime.TotalSeconds,
-                    totalSize = report.summary.totalSize,
-                    outputPath = report.summary.outputPath,
-                    platform = report.summary.platform.ToString()
-                });
+                    ["success"] = report.summary.result == BuildResult.Succeeded,
+                    ["result"] = report.summary.result.ToString(),
+                    ["totalTime"] = report.summary.totalTime.TotalSeconds,
+                    ["totalSize"] = report.summary.totalSize,
+                    ["outputPath"] = report.summary.outputPath,
+                    ["platform"] = report.summary.platform.ToString()
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string ConfigureBuild(Dictionary<string, object> data)
+        private static JObject ConfigureBuild(JObject parameters)
         {
             try
             {
                 // Configure build settings
-                if (data.ContainsKey("company_name"))
-                    PlayerSettings.companyName = data["company_name"].ToString();
-                if (data.ContainsKey("product_name"))
-                    PlayerSettings.productName = data["product_name"].ToString();
-                if (data.ContainsKey("version"))
-                    PlayerSettings.bundleVersion = data["version"].ToString();
+                if (parameters["company_name"] != null)
+                    PlayerSettings.companyName = parameters["company_name"].ToString();
+                if (parameters["product_name"] != null)
+                    PlayerSettings.productName = parameters["product_name"].ToString();
+                if (parameters["version"] != null)
+                    PlayerSettings.bundleVersion = parameters["version"].ToString();
 
-                return JsonConvert.SerializeObject(new { success = true, message = "Build settings configured" });
+                return new JObject { ["success"] = true, ["message"] = "Build settings configured" };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string ListBuilds()
+        private static JObject ListBuilds()
         {
             try
             {
-                var builds = new List<object>();
+                var builds = new JArray();
                 
                 // Get available build targets
                 foreach (BuildTarget target in Enum.GetValues(typeof(BuildTarget)))
                 {
                     if (BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Standalone, target))
                     {
-                        builds.Add(new
+                        builds.Add(new JObject
                         {
-                            target = target.ToString(),
-                            supported = true,
-                            group = BuildPipeline.GetBuildTargetGroup(target).ToString()
+                            ["target"] = target.ToString(),
+                            ["supported"] = true,
+                            ["group"] = BuildPipeline.GetBuildTargetGroup(target).ToString()
                         });
                     }
                 }
 
-                return JsonConvert.SerializeObject(new { builds });
+                return new JObject { ["builds"] = builds };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string GetBuildInfo(Dictionary<string, object> data)
+        private static JObject GetBuildInfo(JObject parameters)
         {
             try
             {
-                var buildTarget = ParseBuildTarget(data.GetValueOrDefault("build_target", "").ToString());
+                var buildTarget = ParseBuildTarget(parameters["build_target"]?.ToString() ?? "");
                 
-                var info = new
+                var info = new JObject
                 {
-                    target = buildTarget.ToString(),
-                    group = BuildPipeline.GetBuildTargetGroup(buildTarget).ToString(),
-                    supported = BuildPipeline.IsBuildTargetSupported(BuildPipeline.GetBuildTargetGroup(buildTarget), buildTarget),
-                    scenes = EditorBuildSettings.scenes.Select(s => new { path = s.path, enabled = s.enabled }).ToArray(),
-                    playerSettings = new
+                    ["target"] = buildTarget.ToString(),
+                    ["group"] = BuildPipeline.GetBuildTargetGroup(buildTarget).ToString(),
+                    ["supported"] = BuildPipeline.IsBuildTargetSupported(BuildPipeline.GetBuildTargetGroup(buildTarget), buildTarget),
+                    ["scenes"] = new JArray(EditorBuildSettings.scenes.Select(s => new JObject { ["path"] = s.path, ["enabled"] = s.enabled })),
+                    ["playerSettings"] = new JObject
                     {
-                        companyName = PlayerSettings.companyName,
-                        productName = PlayerSettings.productName,
-                        version = PlayerSettings.bundleVersion
+                        ["companyName"] = PlayerSettings.companyName,
+                        ["productName"] = PlayerSettings.productName,
+                        ["version"] = PlayerSettings.bundleVersion
                     }
                 };
 
-                return JsonConvert.SerializeObject(info);
+                return info;
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string BuildProject(Dictionary<string, object> data)
+        private static JObject BuildProject(JObject parameters)
         {
-            return CreateBuild(data); // Same as create_build
+            return CreateBuild(parameters); // Same as create_build
         }
 
-        private static string GetBuildLog(Dictionary<string, object> data)
+        private static JObject GetBuildLog(JObject parameters)
         {
             try
             {
                 // Placeholder for build log retrieval
-                return JsonConvert.SerializeObject(new 
+                return new JObject 
                 { 
-                    message = "Build log retrieval not yet implemented",
-                    logs = new string[] { "Build log functionality requires custom implementation" }
-                });
+                    ["message"] = "Build log retrieval not yet implemented",
+                    ["logs"] = new JArray("Build log functionality requires custom implementation")
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string ValidateBuild(Dictionary<string, object> data)
+        private static JObject ValidateBuild(JObject parameters)
         {
             try
             {
-                var issues = new List<string>();
+                var issues = new JArray();
                 
                 // Check if scenes are set
                 if (EditorBuildSettings.scenes.Length == 0)
                     issues.Add("No scenes configured for build");
                 
                 // Check if build target is supported
-                var buildTarget = ParseBuildTarget(data.GetValueOrDefault("build_target", "").ToString());
+                var buildTarget = ParseBuildTarget(parameters["build_target"]?.ToString() ?? "");
                 if (!BuildPipeline.IsBuildTargetSupported(BuildPipeline.GetBuildTargetGroup(buildTarget), buildTarget))
                     issues.Add($"Build target {buildTarget} is not supported");
 
-                return JsonConvert.SerializeObject(new 
+                return new JObject 
                 { 
-                    valid = issues.Count == 0,
-                    issues = issues.ToArray()
-                });
+                    ["valid"] = issues.Count == 0,
+                    ["issues"] = issues
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
