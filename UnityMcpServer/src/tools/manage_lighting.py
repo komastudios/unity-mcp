@@ -29,7 +29,7 @@ except ImportError:
 lighting_cache = CacheManager(default_ttl=30)
 
 @register_tool
-def manage_lighting(
+async def manage_lighting(
     action: str,
     light_name: Optional[str] = None,
     light_type: Optional[str] = None,
@@ -130,7 +130,7 @@ def manage_lighting(
     }
     
     from ..core.unity_bridge import send_command_to_unity
-    result = await send_command_to_unity("ManageLighting", command_data)
+    result = await send_command_to_unity("HandleManageLighting", command_data)
     
     # Cache read operation results
     if action in ['get_light_info', 'list_lights', 'get_material_info', 'list_materials', 'get_lighting_info']:
