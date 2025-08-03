@@ -96,31 +96,31 @@ namespace UnityMcpBridge.Tools
             try
             {
                 string agentName = parameters["agent_name"]?.ToString() ?? "NavMeshAgent";
-                var agentSettings = parameters["agent_settings"]?.ToObject<Dictionary<string, object>>() ?? new Dictionary<string, object>();
+                var agentSettings = parameters["agent_settings"]?.ToObject<JObject>() ?? new JObject();
                 
                 // Create GameObject with NavMeshAgent
                 GameObject agentObj = new GameObject(agentName);
                 NavMeshAgent agent = agentObj.AddComponent<NavMeshAgent>();
                 
                 // Configure agent settings
-                if (agentSettings.ContainsKey("speed"))
-                    agent.speed = Convert.ToSingle(agentSettings["speed"]);
-                if (agentSettings.ContainsKey("angular_speed"))
-                    agent.angularSpeed = Convert.ToSingle(agentSettings["angular_speed"]);
-                if (agentSettings.ContainsKey("acceleration"))
-                    agent.acceleration = Convert.ToSingle(agentSettings["acceleration"]);
-                if (agentSettings.ContainsKey("stopping_distance"))
-                    agent.stoppingDistance = Convert.ToSingle(agentSettings["stopping_distance"]);
-                if (agentSettings.ContainsKey("auto_traverse_off_mesh_link"))
-                    agent.autoTraverseOffMeshLink = Convert.ToBoolean(agentSettings["auto_traverse_off_mesh_link"]);
-                if (agentSettings.ContainsKey("auto_repath"))
-                    agent.autoRepath = Convert.ToBoolean(agentSettings["auto_repath"]);
-                if (agentSettings.ContainsKey("radius"))
-                    agent.radius = Convert.ToSingle(agentSettings["radius"]);
-                if (agentSettings.ContainsKey("height"))
-                    agent.height = Convert.ToSingle(agentSettings["height"]);
-                if (agentSettings.ContainsKey("priority"))
-                    agent.avoidancePriority = Convert.ToInt32(agentSettings["priority"]);
+                if (agentSettings["speed"] != null)
+                    agent.speed = agentSettings["speed"].ToObject<float>();
+                if (agentSettings["angular_speed"] != null)
+                    agent.angularSpeed = agentSettings["angular_speed"].ToObject<float>();
+                if (agentSettings["acceleration"] != null)
+                    agent.acceleration = agentSettings["acceleration"].ToObject<float>();
+                if (agentSettings["stopping_distance"] != null)
+                    agent.stoppingDistance = agentSettings["stopping_distance"].ToObject<float>();
+                if (agentSettings["auto_traverse_off_mesh_link"] != null)
+                    agent.autoTraverseOffMeshLink = agentSettings["auto_traverse_off_mesh_link"].ToObject<bool>();
+                if (agentSettings["auto_repath"] != null)
+                    agent.autoRepath = agentSettings["auto_repath"].ToObject<bool>();
+                if (agentSettings["radius"] != null)
+                    agent.radius = agentSettings["radius"].ToObject<float>();
+                if (agentSettings["height"] != null)
+                    agent.height = agentSettings["height"].ToObject<float>();
+                if (agentSettings["priority"] != null)
+                    agent.avoidancePriority = agentSettings["priority"].ToObject<int>();
                 
                 // Register undo
                 Undo.RegisterCreatedObjectUndo(agentObj, "Create NavMesh Agent");
@@ -148,7 +148,7 @@ namespace UnityMcpBridge.Tools
             try
             {
                 string agentName = parameters["agent_name"]?.ToString();
-                var agentSettings = parameters["agent_settings"]?.ToObject<Dictionary<string, object>>() ?? new Dictionary<string, object>();
+                var agentSettings = parameters["agent_settings"]?.ToObject<JObject>() ?? new JObject();
                 
                 GameObject agentObj = GameObject.Find(agentName);
                 if (agentObj == null)
@@ -178,31 +178,31 @@ namespace UnityMcpBridge.Tools
                     switch (setting.Key)
                     {
                         case "speed":
-                            agent.speed = Convert.ToSingle(setting.Value);
+                            agent.speed = setting.Value.ToObject<float>();
                             break;
                         case "angular_speed":
-                            agent.angularSpeed = Convert.ToSingle(setting.Value);
+                            agent.angularSpeed = setting.Value.ToObject<float>();
                             break;
                         case "acceleration":
-                            agent.acceleration = Convert.ToSingle(setting.Value);
+                            agent.acceleration = setting.Value.ToObject<float>();
                             break;
                         case "stopping_distance":
-                            agent.stoppingDistance = Convert.ToSingle(setting.Value);
+                            agent.stoppingDistance = setting.Value.ToObject<float>();
                             break;
                         case "auto_traverse_off_mesh_link":
-                            agent.autoTraverseOffMeshLink = Convert.ToBoolean(setting.Value);
+                            agent.autoTraverseOffMeshLink = setting.Value.ToObject<bool>();
                             break;
                         case "auto_repath":
-                            agent.autoRepath = Convert.ToBoolean(setting.Value);
+                            agent.autoRepath = setting.Value.ToObject<bool>();
                             break;
                         case "radius":
-                            agent.radius = Convert.ToSingle(setting.Value);
+                            agent.radius = setting.Value.ToObject<float>();
                             break;
                         case "height":
-                            agent.height = Convert.ToSingle(setting.Value);
+                            agent.height = setting.Value.ToObject<float>();
                             break;
                         case "priority":
-                            agent.avoidancePriority = Convert.ToInt32(setting.Value);
+                            agent.avoidancePriority = setting.Value.ToObject<int>();
                             break;
                     }
                 }
@@ -277,40 +277,38 @@ namespace UnityMcpBridge.Tools
             try
             {
                 string obstacleName = parameters["obstacle_name"]?.ToString() ?? "NavMeshObstacle";
-                var obstacleSettings = parameters["obstacle_settings"]?.ToObject<Dictionary<string, object>>() ?? new Dictionary<string, object>();
+                var obstacleSettings = parameters["obstacle_settings"]?.ToObject<JObject>() ?? new JObject();
                 
                 GameObject obstacleObj = new GameObject(obstacleName);
                 NavMeshObstacle obstacle = obstacleObj.AddComponent<NavMeshObstacle>();
                 
                 // Configure obstacle settings
-                if (obstacleSettings.ContainsKey("shape"))
+                if (obstacleSettings["shape"] != null)
                 {
                     string shape = obstacleSettings["shape"].ToString();
                     obstacle.shape = shape == "Box" ? NavMeshObstacleShape.Box : NavMeshObstacleShape.Capsule;
                 }
                 
-                if (obstacleSettings.ContainsKey("center"))
+                if (obstacleSettings["center"] != null)
                 {
-                    var centerData = (JToken)obstacleSettings["center"];
-                    var center = centerData.ToObject<float[]>();
+                    var center = obstacleSettings["center"].ToObject<float[]>();
                     obstacle.center = new Vector3(center[0], center[1], center[2]);
                 }
                 
-                if (obstacleSettings.ContainsKey("size"))
+                if (obstacleSettings["size"] != null)
                 {
-                    var sizeData = (JToken)obstacleSettings["size"];
-                    var size = sizeData.ToObject<float[]>();
+                    var size = obstacleSettings["size"].ToObject<float[]>();
                     obstacle.size = new Vector3(size[0], size[1], size[2]);
                 }
                 
-                if (obstacleSettings.ContainsKey("carve"))
-                    obstacle.carving = Convert.ToBoolean(obstacleSettings["carve"]);
+                if (obstacleSettings["carve"] != null)
+                    obstacle.carving = obstacleSettings["carve"].ToObject<bool>();
                 
-                if (obstacleSettings.ContainsKey("move_threshold"))
-                    obstacle.carvingMoveThreshold = Convert.ToSingle(obstacleSettings["move_threshold"]);
+                if (obstacleSettings["move_threshold"] != null)
+                    obstacle.carvingMoveThreshold = obstacleSettings["move_threshold"].ToObject<float>();
                 
-                if (obstacleSettings.ContainsKey("time_to_stationary"))
-                    obstacle.carvingTimeToStationary = Convert.ToSingle(obstacleSettings["time_to_stationary"]);
+                if (obstacleSettings["time_to_stationary"] != null)
+                    obstacle.carvingTimeToStationary = obstacleSettings["time_to_stationary"].ToObject<float>();
                 
                 Undo.RegisterCreatedObjectUndo(obstacleObj, "Create NavMesh Obstacle");
                 
@@ -335,26 +333,26 @@ namespace UnityMcpBridge.Tools
         {
             try
             {
-                var bakeSettings = parameters["bake_settings"]?.ToObject<Dictionary<string, object>>() ?? new Dictionary<string, object>();
+                var bakeSettings = parameters["bake_settings"]?.ToObject<JObject>() ?? new JObject();
                 
                 // Get current NavMesh build settings
                 NavMeshBuildSettings buildSettings = NavMesh.GetSettingsByID(0);
                 
                 // Apply custom settings if provided
-                if (bakeSettings.ContainsKey("agent_radius"))
-                    buildSettings.agentRadius = Convert.ToSingle(bakeSettings["agent_radius"]);
-                if (bakeSettings.ContainsKey("agent_height"))
-                    buildSettings.agentHeight = Convert.ToSingle(bakeSettings["agent_height"]);
-                if (bakeSettings.ContainsKey("agent_slope"))
-                    buildSettings.agentSlope = Convert.ToSingle(bakeSettings["agent_slope"]);
-                if (bakeSettings.ContainsKey("agent_climb"))
-                    buildSettings.agentClimb = Convert.ToSingle(bakeSettings["agent_climb"]);
-                if (bakeSettings.ContainsKey("ledge_drop_height"))
-                    buildSettings.ledgeDropHeight = Convert.ToSingle(bakeSettings["ledge_drop_height"]);
-                if (bakeSettings.ContainsKey("jump_distance"))
-                    buildSettings.maxJumpAcrossDistance = Convert.ToSingle(bakeSettings["jump_distance"]);
-                if (bakeSettings.ContainsKey("min_region_area"))
-                    buildSettings.minRegionArea = Convert.ToSingle(bakeSettings["min_region_area"]);
+                if (bakeSettings["agent_radius"] != null)
+                    buildSettings.agentRadius = bakeSettings["agent_radius"].ToObject<float>();
+                if (bakeSettings["agent_height"] != null)
+                    buildSettings.agentHeight = bakeSettings["agent_height"].ToObject<float>();
+                if (bakeSettings["agent_slope"] != null)
+                    buildSettings.agentSlope = bakeSettings["agent_slope"].ToObject<float>();
+                if (bakeSettings["agent_climb"] != null)
+                    buildSettings.agentClimb = bakeSettings["agent_climb"].ToObject<float>();
+                if (bakeSettings["ledge_drop_height"] != null)
+                    buildSettings.ledgeDropHeight = bakeSettings["ledge_drop_height"].ToObject<float>();
+                if (bakeSettings["jump_distance"] != null)
+                    buildSettings.maxJumpAcrossDistance = bakeSettings["jump_distance"].ToObject<float>();
+                if (bakeSettings["min_region_area"] != null)
+                    buildSettings.minRegionArea = bakeSettings["min_region_area"].ToObject<float>();
                 
                 // Bake NavMesh
                 UnityEditor.AI.NavMeshBuilder.BuildNavMesh();

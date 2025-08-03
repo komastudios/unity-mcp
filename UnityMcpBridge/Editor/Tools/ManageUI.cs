@@ -21,24 +21,27 @@ namespace UnityMcpBridge.Editor.Tools
             return new { x = vector.x, y = vector.y, z = vector.z };
         }
 
-        public static object HandleCommand(string action, Dictionary<string, object> @params)
+        public static object HandleCommand(JObject @params)
         {
             try
             {
-                // Convert Dictionary to JObject for internal use
-                JObject jParams = JObject.FromObject(@params);
+                string action = @params["action"]?.ToString();
+                if (string.IsNullOrEmpty(action))
+                {
+                    return Response.Error("Action parameter is required.");
+                }
                 
                 return action.ToLower() switch
                 {
-                    "create_canvas" => CreateCanvas(jParams),
-                    "add_ui_element" => AddUIElement(jParams),
-                    "modify_ui_element" => ModifyUIElement(jParams),
-                    "set_ui_layout" => SetUILayout(jParams),
-                    "create_ui_event" => CreateUIEvent(jParams),
-                    "set_ui_animation" => SetUIAnimation(jParams),
-                    "get_ui_info" => GetUIInfo(jParams),
-                    "create_ui_prefab" => CreateUIPrefab(jParams),
-                    "setup_event_system" => SetupEventSystem(jParams),
+                    "create_canvas" => CreateCanvas(@params),
+                    "add_ui_element" => AddUIElement(@params),
+                    "modify_ui_element" => ModifyUIElement(@params),
+                    "set_ui_layout" => SetUILayout(@params),
+                    "create_ui_event" => CreateUIEvent(@params),
+                    "set_ui_animation" => SetUIAnimation(@params),
+                    "get_ui_info" => GetUIInfo(@params),
+                    "create_ui_prefab" => CreateUIPrefab(@params),
+                    "setup_event_system" => SetupEventSystem(@params),
                     _ => Response.Error($"Unknown UI action: {action}")
                 };
             }

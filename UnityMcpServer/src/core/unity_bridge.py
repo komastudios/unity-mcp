@@ -7,8 +7,8 @@ async def send_command_to_unity(tool, data):
         return {"success": False, "error": "Not connected to Unity"}
 
     command = {
-        "tool": tool,
-        "data": data
+        "type": tool,
+        "params": data
     }
 
     try:

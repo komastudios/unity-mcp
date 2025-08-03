@@ -6,16 +6,17 @@ using UnityEngine.Rendering.Universal;
 using UnityEditor;
 using System.IO;
 using UnityMcpBridge.Editor.Helpers;
+using Newtonsoft.Json.Linq;
 
 namespace UnityMcpBridge.Editor.Tools
 {
     public static class ManageLighting
     {
-        public static object HandleCommand(Dictionary<string, object> commandData)
+        public static object HandleCommand(JObject commandData)
         {
             try
             {
-                if (!commandData.ContainsKey("action"))
+                if (commandData["action"] == null)
                 {
                     return Response.Error("Missing 'action' parameter");
                 }
@@ -58,12 +59,12 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object CreateLight(Dictionary<string, object> commandData)
+        private static object CreateLight(JObject commandData)
         {
             try
             {
-                string lightName = commandData.ContainsKey("light_name") ? commandData["light_name"].ToString() : "New Light";
-                string lightType = commandData.ContainsKey("light_type") ? commandData["light_type"].ToString() : "directional";
+                string lightName = commandData["light_name"]?.ToString() ?? "New Light";
+                string lightType = commandData["light_type"]?.ToString() ?? "directional";
                 
                 GameObject lightObject = new GameObject(lightName);
                 Light lightComponent = lightObject.AddComponent<Light>();
@@ -86,61 +87,61 @@ namespace UnityMcpBridge.Editor.Tools
                 }
 
                 // Set position
-                if (commandData.ContainsKey("position"))
+                if (commandData["position"] != null)
                 {
-                    var posDict = commandData["position"] as Dictionary<string, object>;
-                    if (posDict != null)
+                    var posObj = commandData["position"] as JObject;
+                    if (posObj != null)
                     {
                         Vector3 position = new Vector3(
-                            Convert.ToSingle(posDict.GetValueOrDefault("x", 0f)),
-                            Convert.ToSingle(posDict.GetValueOrDefault("y", 0f)),
-                            Convert.ToSingle(posDict.GetValueOrDefault("z", 0f))
+                            posObj["x"]?.ToObject<float>() ?? 0f,
+                            posObj["y"]?.ToObject<float>() ?? 0f,
+                            posObj["z"]?.ToObject<float>() ?? 0f
                         );
                         lightObject.transform.position = position;
                     }
                 }
 
                 // Set rotation
-                if (commandData.ContainsKey("rotation"))
+                if (commandData["rotation"] != null)
                 {
-                    var rotDict = commandData["rotation"] as Dictionary<string, object>;
-                    if (rotDict != null)
+                    var rotObj = commandData["rotation"] as JObject;
+                    if (rotObj != null)
                     {
                         Vector3 rotation = new Vector3(
-                            Convert.ToSingle(rotDict.GetValueOrDefault("x", 0f)),
-                            Convert.ToSingle(rotDict.GetValueOrDefault("y", 0f)),
-                            Convert.ToSingle(rotDict.GetValueOrDefault("z", 0f))
+                            rotObj["x"]?.ToObject<float>() ?? lightObject.transform.rotation.eulerAngles.x,
+                            rotObj["y"]?.ToObject<float>() ?? lightObject.transform.rotation.eulerAngles.y,
+                            rotObj["z"]?.ToObject<float>() ?? lightObject.transform.rotation.eulerAngles.z
                         );
                         lightObject.transform.rotation = Quaternion.Euler(rotation);
                     }
                 }
 
                 // Set light properties
-                if (commandData.ContainsKey("intensity"))
-                    lightComponent.intensity = Convert.ToSingle(commandData["intensity"]);
+                if (commandData["intensity"] != null)
+                    lightComponent.intensity = commandData["intensity"].ToObject<float>();
 
-                if (commandData.ContainsKey("color"))
+                if (commandData["color"] != null)
                 {
-                    var colorDict = commandData["color"] as Dictionary<string, object>;
-                    if (colorDict != null)
+                    var colorObj = commandData["color"] as JObject;
+                    if (colorObj != null)
                     {
                         Color color = new Color(
-                            Convert.ToSingle(colorDict.GetValueOrDefault("r", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("g", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("b", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("a", 1f))
+                            colorObj["r"]?.ToObject<float>() ?? 1f,
+                            colorObj["g"]?.ToObject<float>() ?? 1f,
+                            colorObj["b"]?.ToObject<float>() ?? 1f,
+                            colorObj["a"]?.ToObject<float>() ?? 1f
                         );
                         lightComponent.color = color;
                     }
                 }
 
-                if (commandData.ContainsKey("range"))
-                    lightComponent.range = Convert.ToSingle(commandData["range"]);
+                if (commandData["range"] != null)
+                    lightComponent.range = commandData["range"].ToObject<float>();
 
-                if (commandData.ContainsKey("spot_angle"))
-                    lightComponent.spotAngle = Convert.ToSingle(commandData["spot_angle"]);
+                if (commandData["spot_angle"] != null)
+                    lightComponent.spotAngle = commandData["spot_angle"].ToObject<float>();
 
-                if (commandData.ContainsKey("shadows"))
+                if (commandData["shadows"] != null)
                 {
                     string shadowType = commandData["shadows"].ToString().ToLower();
                     switch (shadowType)
@@ -158,7 +159,7 @@ namespace UnityMcpBridge.Editor.Tools
                 }
 
                 // Set parent if specified
-                if (commandData.ContainsKey("parent_name"))
+                if (commandData["parent_name"] != null)
                 {
                     string parentName = commandData["parent_name"].ToString();
                     GameObject parent = GameObject.Find(parentName);
@@ -184,79 +185,79 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object ModifyLight(Dictionary<string, object> commandData)
+        private static object ModifyLight(JObject commandData)
         {
             try
             {
-                if (!commandData.ContainsKey("light_name"))
+                if (commandData["light_name"] == null)
                 {
                     return Response.Error("Missing 'light_name' parameter");
                 }
 
                 string lightName = commandData["light_name"].ToString();
                 GameObject lightObject = GameObject.Find(lightName);
-            if (lightObject == null)
-            {
-                return Response.Error($"Light '{lightName}' not found");
-            }
+                if (lightObject == null)
+                {
+                    return Response.Error($"Light '{lightName}' not found");
+                }
 
-            Light lightComponent = lightObject.GetComponent<Light>();
-            if (lightComponent == null)
-            {
-                return Response.Error($"GameObject '{lightName}' does not have a Light component");
-            }
+                Light lightComponent = lightObject.GetComponent<Light>();
+                if (lightComponent == null)
+                {
+                    return Response.Error($"GameObject '{lightName}' does not have a Light component");
+                }
 
                 Undo.RecordObject(lightComponent, "Modify Light");
                 Undo.RecordObject(lightObject.transform, "Modify Light Transform");
 
                 // Modify properties
-                if (commandData.ContainsKey("intensity"))
-                    lightComponent.intensity = Convert.ToSingle(commandData["intensity"]);
+                if (commandData["intensity"] != null)
+                    lightComponent.intensity = commandData["intensity"].ToObject<float>();
 
-                if (commandData.ContainsKey("color"))
+                if (commandData["color"] != null)
                 {
-                    var colorDict = commandData["color"] as Dictionary<string, object>;
-                    if (colorDict != null)
+                    var colorObj = commandData["color"] as JObject;
+                    if (colorObj != null)
                     {
                         Color color = new Color(
-                            Convert.ToSingle(colorDict.GetValueOrDefault("r", lightComponent.color.r)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("g", lightComponent.color.g)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("b", lightComponent.color.b)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("a", lightComponent.color.a))
+                            colorObj["r"]?.ToObject<float>() ?? lightComponent.color.r,
+                            colorObj["g"]?.ToObject<float>() ?? lightComponent.color.g,
+                            colorObj["b"]?.ToObject<float>() ?? lightComponent.color.b,
+                            colorObj["a"]?.ToObject<float>() ?? lightComponent.color.a
                         );
                         lightComponent.color = color;
                     }
                 }
 
-                if (commandData.ContainsKey("range"))
-                    lightComponent.range = Convert.ToSingle(commandData["range"]);
+                if (commandData["range"] != null)
+                    lightComponent.range = commandData["range"].ToObject<float>();
 
-                if (commandData.ContainsKey("spot_angle"))
-                    lightComponent.spotAngle = Convert.ToSingle(commandData["spot_angle"]);
+                if (commandData["spot_angle"] != null)
+                    lightComponent.spotAngle = commandData["spot_angle"].ToObject<float>();
 
-                if (commandData.ContainsKey("position"))
+                if (commandData["position"] != null)
                 {
-                    var posDict = commandData["position"] as Dictionary<string, object>;
-                    if (posDict != null)
+                    var posObj = commandData["position"] as JObject;
+                    if (posObj != null)
                     {
                         Vector3 position = new Vector3(
-                            Convert.ToSingle(posDict.GetValueOrDefault("x", lightObject.transform.position.x)),
-                            Convert.ToSingle(posDict.GetValueOrDefault("y", lightObject.transform.position.y)),
-                            Convert.ToSingle(posDict.GetValueOrDefault("z", lightObject.transform.position.z))
+                            posObj["x"]?.ToObject<float>() ?? lightObject.transform.position.x,
+                            posObj["y"]?.ToObject<float>() ?? lightObject.transform.position.y,
+                            posObj["z"]?.ToObject<float>() ?? lightObject.transform.position.z
                         );
                         lightObject.transform.position = position;
                     }
                 }
 
-                if (commandData.ContainsKey("rotation"))
+                if (commandData["rotation"] != null)
                 {
-                    var rotDict = commandData["rotation"] as Dictionary<string, object>;
-                    if (rotDict != null)
+                    var rotObj = commandData["rotation"] as JObject;
+                    if (rotObj != null)
                     {
                         Vector3 rotation = new Vector3(
-                            Convert.ToSingle(rotDict.GetValueOrDefault("x", lightObject.transform.rotation.eulerAngles.x)),
-                            Convert.ToSingle(rotDict.GetValueOrDefault("y", lightObject.transform.rotation.eulerAngles.y)),
-                            Convert.ToSingle(rotDict.GetValueOrDefault("z", lightObject.transform.rotation.eulerAngles.z))
+                            rotObj["x"]?.ToObject<float>() ?? lightObject.transform.rotation.eulerAngles.x,
+                            rotObj["y"]?.ToObject<float>() ?? lightObject.transform.rotation.eulerAngles.y,
+                            rotObj["z"]?.ToObject<float>() ?? lightObject.transform.rotation.eulerAngles.z
                         );
                         lightObject.transform.rotation = Quaternion.Euler(rotation);
                     }
@@ -275,11 +276,11 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object DeleteLight(Dictionary<string, object> commandData)
+        private static object DeleteLight(JObject commandData)
         {
             try
             {
-                if (!commandData.ContainsKey("light_name"))
+                if (commandData["light_name"] == null)
                 {
                     return Response.Error("Missing 'light_name' parameter");
                 }
@@ -308,12 +309,12 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object SetupLighting(Dictionary<string, object> commandData)
+        private static object SetupLighting(JObject commandData)
         {
             try
             {
                 // Configure lighting settings
-                if (commandData.ContainsKey("ambient_mode"))
+                if (commandData["ambient_mode"] != null)
                 {
                     string ambientMode = commandData["ambient_mode"].ToString().ToLower();
                     switch (ambientMode)
@@ -330,25 +331,25 @@ namespace UnityMcpBridge.Editor.Tools
                     }
                 }
 
-                if (commandData.ContainsKey("ambient_color"))
+                if (commandData["ambient_color"] != null)
                 {
-                    var colorDict = commandData["ambient_color"] as Dictionary<string, object>;
-                    if (colorDict != null)
+                    var colorObj = commandData["ambient_color"] as JObject;
+                    if (colorObj != null)
                     {
                         Color ambientColor = new Color(
-                            Convert.ToSingle(colorDict.GetValueOrDefault("r", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("g", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("b", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("a", 1f))
+                            colorObj["r"]?.ToObject<float>() ?? 1f,
+                            colorObj["g"]?.ToObject<float>() ?? 1f,
+                            colorObj["b"]?.ToObject<float>() ?? 1f,
+                            colorObj["a"]?.ToObject<float>() ?? 1f
                         );
                         RenderSettings.ambientLight = ambientColor;
                     }
                 }
 
-                if (commandData.ContainsKey("ambient_intensity"))
-                    RenderSettings.ambientIntensity = Convert.ToSingle(commandData["ambient_intensity"]);
+                if (commandData["ambient_intensity"] != null)
+                    RenderSettings.ambientIntensity = commandData["ambient_intensity"].ToObject<float>();
 
-                if (commandData.ContainsKey("skybox_material"))
+                if (commandData["skybox_material"] != null)
                 {
                     string skyboxPath = commandData["skybox_material"].ToString();
                     Material skyboxMaterial = AssetDatabase.LoadAssetAtPath<Material>(skyboxPath);
@@ -358,25 +359,25 @@ namespace UnityMcpBridge.Editor.Tools
                     }
                 }
 
-                if (commandData.ContainsKey("fog_enabled"))
-                    RenderSettings.fog = Convert.ToBoolean(commandData["fog_enabled"]);
+                if (commandData["fog_enabled"] != null)
+                    RenderSettings.fog = commandData["fog_enabled"].ToObject<bool>();
 
-                if (commandData.ContainsKey("fog_color"))
+                if (commandData["fog_color"] != null)
                 {
-                    var colorDict = commandData["fog_color"] as Dictionary<string, object>;
-                    if (colorDict != null)
+                    var colorObj = commandData["fog_color"] as JObject;
+                    if (colorObj != null)
                     {
                         Color fogColor = new Color(
-                            Convert.ToSingle(colorDict.GetValueOrDefault("r", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("g", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("b", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("a", 1f))
+                            colorObj["r"]?.ToObject<float>() ?? 1f,
+                            colorObj["g"]?.ToObject<float>() ?? 1f,
+                            colorObj["b"]?.ToObject<float>() ?? 1f,
+                            colorObj["a"]?.ToObject<float>() ?? 1f
                         );
                         RenderSettings.fogColor = fogColor;
                     }
                 }
 
-                if (commandData.ContainsKey("fog_mode"))
+                if (commandData["fog_mode"] != null)
                 {
                     string fogMode = commandData["fog_mode"].ToString().ToLower();
                     switch (fogMode)
@@ -393,14 +394,14 @@ namespace UnityMcpBridge.Editor.Tools
                     }
                 }
 
-                if (commandData.ContainsKey("fog_start_distance"))
-                    RenderSettings.fogStartDistance = Convert.ToSingle(commandData["fog_start_distance"]);
+                if (commandData["fog_start_distance"] != null)
+                    RenderSettings.fogStartDistance = commandData["fog_start_distance"].ToObject<float>();
 
-                if (commandData.ContainsKey("fog_end_distance"))
-                    RenderSettings.fogEndDistance = Convert.ToSingle(commandData["fog_end_distance"]);
+                if (commandData["fog_end_distance"] != null)
+                    RenderSettings.fogEndDistance = commandData["fog_end_distance"].ToObject<float>();
 
-                if (commandData.ContainsKey("fog_density"))
-                    RenderSettings.fogDensity = Convert.ToSingle(commandData["fog_density"]);
+                if (commandData["fog_density"] != null)
+                    RenderSettings.fogDensity = commandData["fog_density"].ToObject<float>();
 
                 return Response.Success("Lighting settings configured successfully", new Dictionary<string, object>
                 {
@@ -413,24 +414,24 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object BakeLightmaps(Dictionary<string, object> commandData)
+        private static object BakeLightmaps(JObject commandData)
         {
             try
             {
                 // Configure lightmapping settings
-                if (commandData.ContainsKey("lightmap_resolution"))
-                    LightmapEditorSettings.realtimeResolution = Convert.ToSingle(commandData["lightmap_resolution"]);
+                if (commandData["lightmap_resolution"] != null)
+                    LightmapEditorSettings.realtimeResolution = commandData["lightmap_resolution"].ToObject<float>();
 
-                if (commandData.ContainsKey("lightmap_padding"))
-                    LightmapEditorSettings.padding = Convert.ToInt32(commandData["lightmap_padding"]);
+                if (commandData["lightmap_padding"] != null)
+                    LightmapEditorSettings.padding = commandData["lightmap_padding"].ToObject<int>();
 
-                if (commandData.ContainsKey("lightmap_size"))
-                    LightmapEditorSettings.maxAtlasSize = Convert.ToInt32(commandData["lightmap_size"]);
+                if (commandData["lightmap_size"] != null)
+                    LightmapEditorSettings.maxAtlasSize = commandData["lightmap_size"].ToObject<int>();
 
-                if (commandData.ContainsKey("ambient_occlusion"))
-                    LightmapEditorSettings.enableAmbientOcclusion = Convert.ToBoolean(commandData["ambient_occlusion"]);
+                if (commandData["ambient_occlusion"] != null)
+                    LightmapEditorSettings.enableAmbientOcclusion = commandData["ambient_occlusion"].ToObject<bool>();
 
-                if (commandData.ContainsKey("directional_mode"))
+                if (commandData["directional_mode"] != null)
                 {
                     string directionalMode = commandData["directional_mode"].ToString().ToLower();
                     switch (directionalMode)
@@ -445,7 +446,7 @@ namespace UnityMcpBridge.Editor.Tools
                 }
 
                 // Start baking
-                bool async = commandData.ContainsKey("async") ? Convert.ToBoolean(commandData["async"]) : true;
+                bool async = commandData["async"]?.ToObject<bool>() ?? true;
                 
                 if (async)
                 {
@@ -468,18 +469,18 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object CreateMaterial(Dictionary<string, object> commandData)
+        private static object CreateMaterial(JObject commandData)
         {
             try
             {
-                if (!commandData.ContainsKey("material_name"))
+                if (commandData["material_name"] == null)
                 {
                     return Response.Error("Missing 'material_name' parameter");
                 }
 
                 string materialName = commandData["material_name"].ToString();
-                string shaderName = commandData.ContainsKey("shader_name") ? commandData["shader_name"].ToString() : "Universal Render Pipeline/Lit";
-                string savePath = commandData.ContainsKey("save_path") ? commandData["save_path"].ToString() : $"Assets/Materials/{materialName}.mat";
+                string shaderName = commandData["shader_name"]?.ToString() ?? "Universal Render Pipeline/Lit";
+                string savePath = commandData["save_path"]?.ToString() ?? $"Assets/Materials/{materialName}.mat";
 
                 // Ensure directory exists
                 string directory = Path.GetDirectoryName(savePath);
@@ -498,44 +499,44 @@ namespace UnityMcpBridge.Editor.Tools
                 material.name = materialName;
 
                 // Set material properties
-                if (commandData.ContainsKey("albedo_color"))
+                if (commandData["albedo_color"] != null)
                 {
-                    var colorDict = commandData["albedo_color"] as Dictionary<string, object>;
-                    if (colorDict != null)
+                    var colorObj = commandData["albedo_color"] as JObject;
+                    if (colorObj != null)
                     {
                         Color albedoColor = new Color(
-                            Convert.ToSingle(colorDict.GetValueOrDefault("r", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("g", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("b", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("a", 1f))
+                            colorObj["r"]?.ToObject<float>() ?? 1f,
+                            colorObj["g"]?.ToObject<float>() ?? 1f,
+                            colorObj["b"]?.ToObject<float>() ?? 1f,
+                            colorObj["a"]?.ToObject<float>() ?? 1f
                         );
                         material.SetColor("_BaseColor", albedoColor);
                     }
                 }
 
-                if (commandData.ContainsKey("metallic"))
-                    material.SetFloat("_Metallic", Convert.ToSingle(commandData["metallic"]));
+                if (commandData["metallic"] != null)
+                    material.SetFloat("_Metallic", commandData["metallic"].ToObject<float>());
 
-                if (commandData.ContainsKey("smoothness"))
-                    material.SetFloat("_Smoothness", Convert.ToSingle(commandData["smoothness"]));
+                if (commandData["smoothness"] != null)
+                    material.SetFloat("_Smoothness", commandData["smoothness"].ToObject<float>());
 
-                if (commandData.ContainsKey("emission_color"))
+                if (commandData["emission_color"] != null)
                 {
-                    var colorDict = commandData["emission_color"] as Dictionary<string, object>;
-                    if (colorDict != null)
+                    var colorObj = commandData["emission_color"] as JObject;
+                    if (colorObj != null)
                     {
                         Color emissionColor = new Color(
-                            Convert.ToSingle(colorDict.GetValueOrDefault("r", 0f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("g", 0f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("b", 0f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("a", 1f))
+                            colorObj["r"]?.ToObject<float>() ?? 0f,
+                            colorObj["g"]?.ToObject<float>() ?? 0f,
+                            colorObj["b"]?.ToObject<float>() ?? 0f,
+                            colorObj["a"]?.ToObject<float>() ?? 1f
                         );
                         material.SetColor("_EmissionColor", emissionColor);
                         material.EnableKeyword("_EMISSION");
                     }
                 }
 
-                if (commandData.ContainsKey("albedo_texture"))
+                if (commandData["albedo_texture"] != null)
                 {
                     string texturePath = commandData["albedo_texture"].ToString();
                     Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
@@ -564,11 +565,11 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object ModifyMaterial(Dictionary<string, object> commandData)
+        private static object ModifyMaterial(JObject commandData)
         {
             try
             {
-                if (!commandData.ContainsKey("material_path"))
+                if (commandData["material_path"] == null)
                 {
                     return Response.Error("Missing 'material_path' parameter");
                 }
@@ -584,37 +585,37 @@ namespace UnityMcpBridge.Editor.Tools
                 Undo.RecordObject(material, "Modify Material");
 
                 // Modify material properties
-                if (commandData.ContainsKey("albedo_color"))
+                if (commandData["albedo_color"] != null)
                 {
-                    var colorDict = commandData["albedo_color"] as Dictionary<string, object>;
-                    if (colorDict != null)
+                    var colorObj = commandData["albedo_color"] as JObject;
+                    if (colorObj != null)
                     {
                         Color albedoColor = new Color(
-                            Convert.ToSingle(colorDict.GetValueOrDefault("r", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("g", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("b", 1f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("a", 1f))
+                            colorObj["r"]?.ToObject<float>() ?? 1f,
+                            colorObj["g"]?.ToObject<float>() ?? 1f,
+                            colorObj["b"]?.ToObject<float>() ?? 1f,
+                            colorObj["a"]?.ToObject<float>() ?? 1f
                         );
                         material.SetColor("_BaseColor", albedoColor);
                     }
                 }
 
-                if (commandData.ContainsKey("metallic"))
-                    material.SetFloat("_Metallic", Convert.ToSingle(commandData["metallic"]));
+                if (commandData["metallic"] != null)
+                    material.SetFloat("_Metallic", commandData["metallic"].ToObject<float>());
 
-                if (commandData.ContainsKey("smoothness"))
-                    material.SetFloat("_Smoothness", Convert.ToSingle(commandData["smoothness"]));
+                if (commandData["smoothness"] != null)
+                    material.SetFloat("_Smoothness", commandData["smoothness"].ToObject<float>());
 
-                if (commandData.ContainsKey("emission_color"))
+                if (commandData["emission_color"] != null)
                 {
-                    var colorDict = commandData["emission_color"] as Dictionary<string, object>;
-                    if (colorDict != null)
+                    var colorObj = commandData["emission_color"] as JObject;
+                    if (colorObj != null)
                     {
                         Color emissionColor = new Color(
-                            Convert.ToSingle(colorDict.GetValueOrDefault("r", 0f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("g", 0f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("b", 0f)),
-                            Convert.ToSingle(colorDict.GetValueOrDefault("a", 1f))
+                            colorObj["r"]?.ToObject<float>() ?? 0f,
+                            colorObj["g"]?.ToObject<float>() ?? 0f,
+                            colorObj["b"]?.ToObject<float>() ?? 0f,
+                            colorObj["a"]?.ToObject<float>() ?? 1f
                         );
                         material.SetColor("_EmissionColor", emissionColor);
                         if (emissionColor != Color.black)
@@ -644,7 +645,7 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object SetupPostProcessing(Dictionary<string, object> commandData)
+        private static object SetupPostProcessing(JObject commandData)
         {
             try
             {
@@ -738,7 +739,7 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object ConfigureRenderPipeline(Dictionary<string, object> commandData)
+        private static object ConfigureRenderPipeline(JObject commandData)
         {
             try
             {
@@ -751,14 +752,14 @@ namespace UnityMcpBridge.Editor.Tools
                 // Note: Many URP settings are not directly accessible via script
                 // This is a simplified implementation
                 
-                var pipelineInfo = new Dictionary<string, object>
+                var pipelineInfo = new JObject
                 {
                     ["pipeline_type"] = "Universal Render Pipeline",
                     ["asset_name"] = renderPipelineAsset.name,
                     ["asset_path"] = AssetDatabase.GetAssetPath(renderPipelineAsset)
                 };
 
-                return Response.Success("Render pipeline information retrieved", new Dictionary<string, object>
+                return Response.Success("Render pipeline information retrieved", new JObject
                 {
                     ["pipeline_info"] = pipelineInfo
                 });
@@ -769,11 +770,11 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object GetLightingInfo(Dictionary<string, object> commandData)
+        private static object GetLightingInfo(JObject commandData)
         {
             try
             {
-                var lightingInfo = new Dictionary<string, object>();
+                var lightingInfo = new JObject();
 
                 if (commandData.ContainsKey("light_name"))
                 {
@@ -784,7 +785,7 @@ namespace UnityMcpBridge.Editor.Tools
                         Light lightComponent = lightObject.GetComponent<Light>();
                         if (lightComponent != null)
                         {
-                            lightingInfo["light_info"] = GetLightInfo(lightComponent);
+                            lightingInfo["light_info"] = JObject.FromObject(GetLightInfo(lightComponent));
                         }
                     }
                 }
@@ -792,16 +793,16 @@ namespace UnityMcpBridge.Editor.Tools
                 {
                     // Get all lights in scene
                     Light[] allLights = UnityEngine.Object.FindObjectsOfType<Light>();
-                    var lightsInfo = new List<Dictionary<string, object>>();
+                    var lightsInfo = new JArray();
                     
                     foreach (Light light in allLights)
                     {
-                        lightsInfo.Add(GetLightInfo(light));
+                        lightsInfo.Add(JObject.FromObject(GetLightInfo(light)));
                     }
                     
                     lightingInfo["all_lights"] = lightsInfo;
-                    lightingInfo["lighting_settings"] = GetCurrentLightingSettings();
-                    lightingInfo["lightmap_settings"] = GetLightmapSettings();
+                    lightingInfo["lighting_settings"] = JObject.FromObject(GetCurrentLightingSettings());
+                    lightingInfo["lightmap_settings"] = JObject.FromObject(GetLightmapSettings());
                 }
 
                 return Response.Success("Lighting information retrieved", lightingInfo);
@@ -812,7 +813,7 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object CreateReflectionProbe(Dictionary<string, object> commandData)
+        private static object CreateReflectionProbe(JObject commandData)
         {
             try
             {
@@ -824,13 +825,13 @@ namespace UnityMcpBridge.Editor.Tools
                 // Set position
                 if (commandData.ContainsKey("position"))
                 {
-                    var posDict = commandData["position"] as Dictionary<string, object>;
+                    var posDict = commandData["position"] as JObject;
                     if (posDict != null)
                     {
                         Vector3 position = new Vector3(
-                            Convert.ToSingle(posDict.GetValueOrDefault("x", 0f)),
-                            Convert.ToSingle(posDict.GetValueOrDefault("y", 0f)),
-                            Convert.ToSingle(posDict.GetValueOrDefault("z", 0f))
+                            posDict.GetValue("x")?.ToObject<float>() ?? 0f,
+                            posDict.GetValue("y")?.ToObject<float>() ?? 0f,
+                            posDict.GetValue("z")?.ToObject<float>() ?? 0f
                         );
                         probeObject.transform.position = position;
                     }
@@ -839,13 +840,13 @@ namespace UnityMcpBridge.Editor.Tools
                 // Set size
                 if (commandData.ContainsKey("size"))
                 {
-                    var sizeDict = commandData["size"] as Dictionary<string, object>;
+                    var sizeDict = commandData["size"] as JObject;
                     if (sizeDict != null)
                     {
                         Vector3 size = new Vector3(
-                            Convert.ToSingle(sizeDict.GetValueOrDefault("x", 10f)),
-                            Convert.ToSingle(sizeDict.GetValueOrDefault("y", 10f)),
-                            Convert.ToSingle(sizeDict.GetValueOrDefault("z", 10f))
+                            sizeDict.GetValue("x")?.ToObject<float>() ?? 10f,
+                            sizeDict.GetValue("y")?.ToObject<float>() ?? 10f,
+                            sizeDict.GetValue("z")?.ToObject<float>() ?? 10f
                         );
                         probe.size = size;
                     }
@@ -853,25 +854,25 @@ namespace UnityMcpBridge.Editor.Tools
 
                 if (commandData.ContainsKey("resolution"))
                 {
-                    int resolution = Convert.ToInt32(commandData["resolution"]);
+                    int resolution = commandData["resolution"].ToObject<int>();
                     probe.resolution = resolution;
                 }
 
                 if (commandData.ContainsKey("intensity"))
-                    probe.intensity = Convert.ToSingle(commandData["intensity"]);
+                    probe.intensity = commandData["intensity"].ToObject<float>();
 
                 Undo.RegisterCreatedObjectUndo(probeObject, "Create Reflection Probe");
 
-                var probeInfo = new Dictionary<string, object>
+                var probeInfo = new JObject
                 {
                     ["name"] = probeName,
-                    ["position"] = new Dictionary<string, object>
+                    ["position"] = new JObject
                     {
                         ["x"] = probeObject.transform.position.x,
                         ["y"] = probeObject.transform.position.y,
                         ["z"] = probeObject.transform.position.z
                     },
-                    ["size"] = new Dictionary<string, object>
+                    ["size"] = new JObject
                     {
                         ["x"] = probe.size.x,
                         ["y"] = probe.size.y,
@@ -881,7 +882,7 @@ namespace UnityMcpBridge.Editor.Tools
                     ["intensity"] = probe.intensity
                 };
 
-                return Response.Success("Reflection probe created successfully", new Dictionary<string, object>
+                return Response.Success("Reflection probe created successfully", new JObject
                 {
                     ["probe_info"] = probeInfo
                 });
@@ -892,7 +893,7 @@ namespace UnityMcpBridge.Editor.Tools
             }
         }
 
-        private static object SetupLightProbeGroup(Dictionary<string, object> commandData)
+        private static object SetupLightProbeGroup(JObject commandData)
         {
             try
             {
@@ -904,13 +905,13 @@ namespace UnityMcpBridge.Editor.Tools
                 // Set position
                 if (commandData.ContainsKey("position"))
                 {
-                    var posDict = commandData["position"] as Dictionary<string, object>;
+                    var posDict = commandData["position"] as JObject;
                     if (posDict != null)
                     {
                         Vector3 position = new Vector3(
-                            Convert.ToSingle(posDict.GetValueOrDefault("x", 0f)),
-                            Convert.ToSingle(posDict.GetValueOrDefault("y", 0f)),
-                            Convert.ToSingle(posDict.GetValueOrDefault("z", 0f))
+                            posDict.GetValue("x")?.ToObject<float>() ?? 0f,
+                            posDict.GetValue("y")?.ToObject<float>() ?? 0f,
+                            posDict.GetValue("z")?.ToObject<float>() ?? 0f
                         );
                         probeGroupObject.transform.position = position;
                     }
@@ -921,18 +922,18 @@ namespace UnityMcpBridge.Editor.Tools
                 
                 if (commandData.ContainsKey("probe_positions"))
                 {
-                    var positionsArray = commandData["probe_positions"] as object[];
+                    var positionsArray = commandData["probe_positions"] as JArray;
                     if (positionsArray != null)
                     {
                         foreach (var posObj in positionsArray)
                         {
-                            var posDict = posObj as Dictionary<string, object>;
+                            var posDict = posObj as JObject;
                             if (posDict != null)
                             {
                                 Vector3 probePos = new Vector3(
-                                    Convert.ToSingle(posDict.GetValueOrDefault("x", 0f)),
-                                    Convert.ToSingle(posDict.GetValueOrDefault("y", 0f)),
-                                    Convert.ToSingle(posDict.GetValueOrDefault("z", 0f))
+                                    posDict.GetValue("x")?.ToObject<float>() ?? 0f,
+                                    posDict.GetValue("y")?.ToObject<float>() ?? 0f,
+                                    posDict.GetValue("z")?.ToObject<float>() ?? 0f
                                 );
                                 probePositions.Add(probePos);
                             }
@@ -958,10 +959,10 @@ namespace UnityMcpBridge.Editor.Tools
 
                 Undo.RegisterCreatedObjectUndo(probeGroupObject, "Create Light Probe Group");
 
-                var groupInfo = new Dictionary<string, object>
+                var groupInfo = new JObject
                 {
                     ["name"] = groupName,
-                    ["position"] = new Dictionary<string, object>
+                    ["position"] = new JObject
                     {
                         ["x"] = probeGroupObject.transform.position.x,
                         ["y"] = probeGroupObject.transform.position.y,
@@ -970,7 +971,7 @@ namespace UnityMcpBridge.Editor.Tools
                     ["probe_count"] = probeGroup.probePositions.Length
                 };
 
-                return Response.Success("Light probe group created successfully", new Dictionary<string, object>
+                return Response.Success("Light probe group created successfully", new JObject
                 {
                     ["group_info"] = groupInfo
                 });

@@ -198,11 +198,11 @@ namespace UnityMcpBridge.Tools
                     }
                 }
 
-                return new JObject { ["builds"] = builds };
+                return new JObject { ["success"] = true, ["builds"] = builds };
             }
             catch (Exception e)
             {
-                return new JObject { ["error"] = e.Message };
+                return new JObject { ["success"] = false, ["error"] = e.Message };
             }
         }
 
@@ -284,13 +284,12 @@ namespace UnityMcpBridge.Tools
         }
 
         // Asset Bundle Methods
-        private static string CreateAssetBundle(Dictionary<string, object> data)
+        private static JObject CreateAssetBundle(JObject data)
         {
             try
             {
-                var bundleName = data.GetValueOrDefault("bundle_name", "").ToString();
-                var assets = data.ContainsKey("assets") ? 
-                    JsonConvert.DeserializeObject<string[]>(data["assets"].ToString()) : new string[0];
+                var bundleName = data["bundle_name"]?.ToString() ?? "";
+                var assets = data["assets"]?.ToObject<string[]>() ?? new string[0];
 
                 foreach (var assetPath in assets)
                 {
@@ -301,30 +300,29 @@ namespace UnityMcpBridge.Tools
                     }
                 }
 
-                return JsonConvert.SerializeObject(new 
+                return new JObject
                 { 
-                    success = true, 
-                    bundleName = bundleName,
-                    assetsCount = assets.Length
-                });
+                    ["success"] = true, 
+                    ["bundleName"] = bundleName,
+                    ["assetsCount"] = assets.Length
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string AddAssetsToBundle(Dictionary<string, object> data)
+        private static JObject AddAssetsToBundle(JObject data)
         {
             return CreateAssetBundle(data); // Same logic
         }
 
-        private static string RemoveAssetsFromBundle(Dictionary<string, object> data)
+        private static JObject RemoveAssetsFromBundle(JObject data)
         {
             try
             {
-                var assets = data.ContainsKey("assets") ? 
-                    JsonConvert.DeserializeObject<string[]>(data["assets"].ToString()) : new string[0];
+                var assets = data["assets"]?.ToObject<string[]>() ?? new string[0];
 
                 foreach (var assetPath in assets)
                 {
@@ -335,102 +333,107 @@ namespace UnityMcpBridge.Tools
                     }
                 }
 
-                return JsonConvert.SerializeObject(new 
+                return new JObject
                 { 
-                    success = true,
-                    removedAssetsCount = assets.Length
-                });
+                    ["success"] = true,
+                    ["removedAssetsCount"] = assets.Length
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string BuildAssetBundles(Dictionary<string, object> data)
+        private static JObject BuildAssetBundles(JObject data)
         {
             try
             {
-                var buildPath = data.GetValueOrDefault("build_path", "Assets/StreamingAssets").ToString();
-                var buildTarget = ParseBuildTarget(data.GetValueOrDefault("build_target", EditorUserBuildSettings.activeBuildTarget.ToString()).ToString());
+                var buildPath = data["build_path"]?.ToString() ?? "Assets/StreamingAssets";
+                var buildTarget = ParseBuildTarget(data["build_target"]?.ToString() ?? EditorUserBuildSettings.activeBuildTarget.ToString());
 
                 if (!Directory.Exists(buildPath))
                     Directory.CreateDirectory(buildPath);
 
                 var manifest = BuildPipeline.BuildAssetBundles(buildPath, BuildAssetBundleOptions.None, buildTarget);
 
-                return JsonConvert.SerializeObject(new 
+                return new JObject
                 { 
-                    success = manifest != null,
-                    buildPath = buildPath,
-                    bundles = manifest?.GetAllAssetBundles() ?? new string[0]
-                });
+                    ["success"] = manifest != null,
+                    ["buildPath"] = buildPath,
+                    ["bundles"] = new JArray(manifest?.GetAllAssetBundles() ?? new string[0])
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string ListAssetBundles()
+        private static JObject ListAssetBundles()
         {
             try
             {
                 var bundleNames = AssetDatabase.GetAllAssetBundleNames();
-                var bundles = bundleNames.Select(name => new
+                var bundles = new JArray();
+                
+                foreach (var name in bundleNames)
                 {
-                    name = name,
-                    assets = AssetDatabase.GetAssetPathsFromAssetBundle(name)
-                }).ToArray();
+                    bundles.Add(new JObject
+                    {
+                        ["name"] = name,
+                        ["assets"] = new JArray(AssetDatabase.GetAssetPathsFromAssetBundle(name))
+                    });
+                }
 
-                return JsonConvert.SerializeObject(new { bundles });
+                return new JObject { ["bundles"] = bundles };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string GetAssetBundleInfo(Dictionary<string, object> data)
+        private static JObject GetAssetBundleInfo(JObject data)
         {
             try
             {
-                var bundleName = data.GetValueOrDefault("bundle_name", "").ToString();
+                var bundleName = data["bundle_name"]?.ToString() ?? "";
                 var assets = AssetDatabase.GetAssetPathsFromAssetBundle(bundleName);
 
-                return JsonConvert.SerializeObject(new 
+                return new JObject
                 { 
-                    bundleName = bundleName,
-                    assets = assets,
-                    assetCount = assets.Length
-                });
+                    ["bundleName"] = bundleName,
+                    ["assets"] = new JArray(assets),
+                    ["assetCount"] = assets.Length
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string DeleteAssetBundle(Dictionary<string, object> data)
+        private static JObject DeleteAssetBundle(JObject data)
         {
             try
             {
-                var bundleName = data.GetValueOrDefault("bundle_name", "").ToString();
+                var bundleName = data["bundle_name"]?.ToString() ?? "";
                 AssetDatabase.RemoveAssetBundleName(bundleName, true);
 
-                return JsonConvert.SerializeObject(new 
+                return new JObject
                 { 
-                    success = true,
-                    message = $"Asset bundle '{bundleName}' deleted"
-                });
+                    ["success"] = true,
+                    ["message"] = $"Asset bundle '{bundleName}' deleted"
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
-        private static string ValidateAssetBundles()
+        private static JObject ValidateAssetBundles()
         {
             try
             {
@@ -444,93 +447,93 @@ namespace UnityMcpBridge.Tools
                         issues.Add($"Bundle '{bundleName}' has no assets");
                 }
 
-                return JsonConvert.SerializeObject(new 
+                return new JObject
                 { 
-                    valid = issues.Count == 0,
-                    issues = issues.ToArray(),
-                    bundleCount = bundleNames.Length
-                });
+                    ["valid"] = issues.Count == 0,
+                    ["issues"] = new JArray(issues.ToArray()),
+                    ["bundleCount"] = bundleNames.Length
+                };
             }
             catch (Exception e)
             {
-                return JsonConvert.SerializeObject(new { error = e.Message });
+                return new JObject { ["error"] = e.Message };
             }
         }
 
         // Placeholder methods for build pipeline and deployment
-        private static string CreateBuildPipeline(Dictionary<string, object> data)
+        private static JObject CreateBuildPipeline(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Build pipeline creation not yet implemented" });
+            return new JObject { ["message"] = "Build pipeline creation not yet implemented" };
         }
 
-        private static string ModifyBuildPipeline(Dictionary<string, object> data)
+        private static JObject ModifyBuildPipeline(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Build pipeline modification not yet implemented" });
+            return new JObject { ["message"] = "Build pipeline modification not yet implemented" };
         }
 
-        private static string RunBuildPipeline(Dictionary<string, object> data)
+        private static JObject RunBuildPipeline(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Build pipeline execution not yet implemented" });
+            return new JObject { ["message"] = "Build pipeline execution not yet implemented" };
         }
 
-        private static string ListBuildPipelines()
+        private static JObject ListBuildPipelines()
         {
-            return JsonConvert.SerializeObject(new { message = "Build pipeline listing not yet implemented" });
+            return new JObject { ["message"] = "Build pipeline listing not yet implemented" };
         }
 
-        private static string GetBuildPipelineInfo(Dictionary<string, object> data)
+        private static JObject GetBuildPipelineInfo(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Build pipeline info not yet implemented" });
+            return new JObject { ["message"] = "Build pipeline info not yet implemented" };
         }
 
-        private static string DeleteBuildPipeline(Dictionary<string, object> data)
+        private static JObject DeleteBuildPipeline(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Build pipeline deletion not yet implemented" });
+            return new JObject { ["message"] = "Build pipeline deletion not yet implemented" };
         }
 
-        private static string ValidateBuildPipeline(Dictionary<string, object> data)
+        private static JObject ValidateBuildPipeline(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Build pipeline validation not yet implemented" });
+            return new JObject { ["message"] = "Build pipeline validation not yet implemented" };
         }
 
-        private static string GetBuildPipelineLogs(Dictionary<string, object> data)
+        private static JObject GetBuildPipelineLogs(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Build pipeline logs not yet implemented" });
+            return new JObject { ["message"] = "Build pipeline logs not yet implemented" };
         }
 
-        private static string DeployBuild(Dictionary<string, object> data)
+        private static JObject DeployBuild(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Build deployment not yet implemented" });
+            return new JObject { ["message"] = "Build deployment not yet implemented" };
         }
 
-        private static string ConfigureDeployment(Dictionary<string, object> data)
+        private static JObject ConfigureDeployment(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Deployment configuration not yet implemented" });
+            return new JObject { ["message"] = "Deployment configuration not yet implemented" };
         }
 
-        private static string ListDeployments()
+        private static JObject ListDeployments()
         {
-            return JsonConvert.SerializeObject(new { message = "Deployment listing not yet implemented" });
+            return new JObject { ["message"] = "Deployment listing not yet implemented" };
         }
 
-        private static string GetDeploymentStatus(Dictionary<string, object> data)
+        private static JObject GetDeploymentStatus(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Deployment status not yet implemented" });
+            return new JObject { ["message"] = "Deployment status not yet implemented" };
         }
 
-        private static string RollbackDeployment(Dictionary<string, object> data)
+        private static JObject RollbackDeployment(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Deployment rollback not yet implemented" });
+            return new JObject { ["message"] = "Deployment rollback not yet implemented" };
         }
 
-        private static string ValidateDeployment(Dictionary<string, object> data)
+        private static JObject ValidateDeployment(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Deployment validation not yet implemented" });
+            return new JObject { ["message"] = "Deployment validation not yet implemented" };
         }
 
-        private static string GetDeploymentLogs(Dictionary<string, object> data)
+        private static JObject GetDeploymentLogs(JObject data)
         {
-            return JsonConvert.SerializeObject(new { message = "Deployment logs not yet implemented" });
+            return new JObject { ["message"] = "Deployment logs not yet implemented" };
         }
 
         private static BuildTarget ParseBuildTarget(string targetString)

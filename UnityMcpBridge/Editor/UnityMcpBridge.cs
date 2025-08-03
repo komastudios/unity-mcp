@@ -12,6 +12,7 @@ using UnityEngine;
 using UnityMcpBridge.Editor.Helpers;
 using UnityMcpBridge.Editor.Models;
 using UnityMcpBridge.Editor.Tools;
+using UnityMcpBridge.Tools;
 
 namespace UnityMcpBridge.Editor
 {

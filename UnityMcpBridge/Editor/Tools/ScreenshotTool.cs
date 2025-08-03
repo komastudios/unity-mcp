@@ -17,14 +17,13 @@ namespace UnityMcpBridge.Editor.Tools
         }
         public static object TakeScreenshot(JObject parameters)
         {
-            var args = parameters.ToObject<Dictionary<string, object>>();
-            string view = args.ContainsKey("view") ? args["view"].ToString().ToLower() : null;
-            int? width = args.ContainsKey("width") ? (int?)System.Convert.ToInt32(args["width"]) : null;
-            int? height = args.ContainsKey("height") ? (int?)System.Convert.ToInt32(args["height"]) : null;
-            int? max_size = args.ContainsKey("max_size") ? (int?)System.Convert.ToInt32(args["max_size"]) : null;
-            string save_to_path = args.ContainsKey("save_to_path") ? args["save_to_path"].ToString() : null;
-            bool compress = args.ContainsKey("compress") ? (bool)args["compress"] : true;
-            string format = args.ContainsKey("format") ? args["format"].ToString().ToLower() : "png";
+            string view = parameters["view"]?.ToString()?.ToLower();
+            int? width = parameters["width"]?.ToObject<int?>();
+            int? height = parameters["height"]?.ToObject<int?>();
+            int? max_size = parameters["max_size"]?.ToObject<int?>();
+            string save_to_path = parameters["save_to_path"]?.ToString();
+            bool compress = parameters["compress"]?.ToObject<bool>() ?? true;
+            string format = parameters["format"]?.ToString()?.ToLower() ?? "png";
 
             try
             {

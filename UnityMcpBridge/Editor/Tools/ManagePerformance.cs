@@ -25,8 +25,8 @@ namespace UnityMcpBridge.Tools
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                var data = JsonConvert.DeserializeObject<JObject>(jsonData);
+                var action = data.GetValue("action")?.ToString() ?? "";
 
                 return action switch
                 {
@@ -51,8 +51,8 @@ namespace UnityMcpBridge.Tools
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                var data = JsonConvert.DeserializeObject<JObject>(jsonData);
+                var action = data.GetValue("action")?.ToString() ?? "";
 
                 return action switch
                 {
@@ -77,8 +77,8 @@ namespace UnityMcpBridge.Tools
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                var data = JsonConvert.DeserializeObject<JObject>(jsonData);
+                var action = data.GetValue("action")?.ToString() ?? "";
 
                 return action switch
                 {
@@ -103,8 +103,8 @@ namespace UnityMcpBridge.Tools
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                var data = JsonConvert.DeserializeObject<JObject>(jsonData);
+                var action = data.GetValue("action")?.ToString() ?? "";
 
                 return action switch
                 {
@@ -129,8 +129,8 @@ namespace UnityMcpBridge.Tools
         {
             try
             {
-                var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonData);
-                var action = data.GetValueOrDefault("action", "").ToString();
+                var data = JsonConvert.DeserializeObject<JObject>(jsonData);
+                var action = data.GetValue("action")?.ToString() ?? "";
 
                 return action switch
                 {
@@ -152,13 +152,13 @@ namespace UnityMcpBridge.Tools
         }
 
         // Performance Management Methods
-        private static string StartProfiling(Dictionary<string, object> data)
+        private static string StartProfiling(JObject data)
         {
             try
             {
-                var duration = data.ContainsKey("duration") ? Convert.ToSingle(data["duration"]) : 10.0f;
+                var duration = data.ContainsKey("duration") ? data["duration"].ToObject<float>() : 10.0f;
                 var categories = data.ContainsKey("categories") ? 
-                    JsonConvert.DeserializeObject<string[]>(data["categories"].ToString()) : new string[0];
+                    data["categories"].ToObject<string[]>() : new string[0];
 
                 ProfilerDriver.enabled = true;
                 ProfilerDriver.profileEditor = true;
@@ -186,7 +186,7 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static string StopProfiling(Dictionary<string, object> data)
+        private static string StopProfiling(JObject data)
         {
             try
             {
@@ -208,22 +208,29 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static string GetProfileData(Dictionary<string, object> data)
+        private static string GetProfileData(JObject data)
         {
             try
             {
-                var frameCount = ProfilerDriver.lastFrameIndex - ProfilerDriver.firstFrameIndex + 1;
-                var profileData = new
+                var frameCount = data.ContainsKey("frame_count") ? data["frame_count"].ToObject<int>() : 100;
+                var includeMemory = data.ContainsKey("include_memory") ? data["include_memory"].ToObject<bool>() : true;
+                var includeCpu = data.ContainsKey("include_cpu") ? data["include_cpu"].ToObject<bool>() : true;
+                var includeGpu = data.ContainsKey("include_gpu") ? data["include_gpu"].ToObject<bool>() : false;
+
+                var profileData = new Dictionary<string, object>
                 {
-                    isActive = isProfilingActive,
-                    frameCount = frameCount,
-                    firstFrame = ProfilerDriver.firstFrameIndex,
-                    lastFrame = ProfilerDriver.lastFrameIndex,
-                    memoryUsage = Profiler.GetTotalAllocatedMemory(),
-                    reservedMemory = Profiler.GetTotalReservedMemory()
+                    ["frame_count"] = frameCount,
+                    ["memory_usage"] = includeMemory ? GetMemoryProfileData() : null,
+                    ["cpu_usage"] = includeCpu ? GetCpuProfileData() : null,
+                    ["gpu_usage"] = includeGpu ? GetGpuProfileData() : null,
+                    ["timestamp"] = DateTime.Now.ToString()
                 };
 
-                return JsonConvert.SerializeObject(profileData);
+                return JsonConvert.SerializeObject(new
+                {
+                    success = true,
+                    data = profileData
+                });
             }
             catch (Exception e)
             {
@@ -231,7 +238,7 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static string AnalyzePerformance(Dictionary<string, object> data)
+        private static string AnalyzePerformance(JObject data)
         {
             try
             {
@@ -277,12 +284,12 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static string ConfigureProfiler(Dictionary<string, object> data)
+        private static string ConfigureProfiler(JObject data)
         {
             try
             {
                 var categories = data.ContainsKey("categories") ? 
-                    JsonConvert.DeserializeObject<string[]>(data["categories"].ToString()) : new string[0];
+                    data["categories"].ToObject<string[]>() : new string[0];
 
                 foreach (var category in categories)
                 {
@@ -302,11 +309,11 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static string ExportProfile(Dictionary<string, object> data)
+        private static string ExportProfile(JObject data)
         {
             try
             {
-                var outputPath = data.GetValueOrDefault("output_path", "profile_data.json").ToString();
+                var outputPath = data.GetValue("output_path")?.ToString() ?? "profile_data.json";
                 
                 // This is a placeholder - actual profiler data export would require more complex implementation
                 var exportData = new
@@ -349,11 +356,11 @@ namespace UnityMcpBridge.Tools
         }
 
         // Memory Profiling Methods
-        private static string TakeMemorySnapshot(Dictionary<string, object> data)
+        private static string TakeMemorySnapshot(JObject data)
         {
             try
             {
-                var snapshotName = data.GetValueOrDefault("snapshot_name", $"snapshot_{DateTime.Now:yyyyMMdd_HHmmss}").ToString();
+                var snapshotName = data.GetValue("snapshot_name")?.ToString() ?? $"snapshot_{DateTime.Now:yyyyMMdd_HHmmss}";
                 
                 var memorySnapshot = new
                 {
@@ -402,7 +409,7 @@ namespace UnityMcpBridge.Tools
         }
 
         // CPU Profiling Methods
-        private static string StartCpuProfiling(Dictionary<string, object> data)
+        private static string StartCpuProfiling(JObject data)
         {
             try
             {
@@ -421,7 +428,7 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static string StopCpuProfiling(Dictionary<string, object> data)
+        private static string StopCpuProfiling(JObject data)
         {
             try
             {
@@ -460,7 +467,7 @@ namespace UnityMcpBridge.Tools
         }
 
         // Rendering Profiling Methods
-        private static string StartRenderProfiling(Dictionary<string, object> data)
+        private static string StartRenderProfiling(JObject data)
         {
             try
             {
@@ -539,12 +546,12 @@ namespace UnityMcpBridge.Tools
         }
 
         // Placeholder methods for complex operations
-        private static string CompareSnapshots(Dictionary<string, object> data)
+        private static string CompareSnapshots(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Snapshot comparison not yet implemented" });
         }
 
-        private static string AnalyzeMemoryLeaks(Dictionary<string, object> data)
+        private static string AnalyzeMemoryLeaks(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Memory leak analysis not yet implemented" });
         }
@@ -554,12 +561,12 @@ namespace UnityMcpBridge.Tools
             return JsonConvert.SerializeObject(new { message = "Snapshot listing not yet implemented" });
         }
 
-        private static string DeleteSnapshot(Dictionary<string, object> data)
+        private static string DeleteSnapshot(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Snapshot deletion not yet implemented" });
         }
 
-        private static string ExportSnapshot(Dictionary<string, object> data)
+        private static string ExportSnapshot(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Snapshot export not yet implemented" });
         }
@@ -569,17 +576,17 @@ namespace UnityMcpBridge.Tools
             return JsonConvert.SerializeObject(new { message = "Memory optimization suggestions not yet implemented" });
         }
 
-        private static string AnalyzeHotspots(Dictionary<string, object> data)
+        private static string AnalyzeHotspots(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "CPU hotspot analysis not yet implemented" });
         }
 
-        private static string GetCallStack(Dictionary<string, object> data)
+        private static string GetCallStack(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Call stack analysis not yet implemented" });
         }
 
-        private static string ProfileFunction(Dictionary<string, object> data)
+        private static string ProfileFunction(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Function profiling not yet implemented" });
         }
@@ -594,7 +601,7 @@ namespace UnityMcpBridge.Tools
             return JsonConvert.SerializeObject(new { message = "CPU optimization suggestions not yet implemented" });
         }
 
-        private static string StopRenderProfiling(Dictionary<string, object> data)
+        private static string StopRenderProfiling(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Render profiling stop not yet implemented" });
         }
@@ -604,7 +611,7 @@ namespace UnityMcpBridge.Tools
             return JsonConvert.SerializeObject(new { message = "Draw call analysis not yet implemented" });
         }
 
-        private static string ProfileShaders(Dictionary<string, object> data)
+        private static string ProfileShaders(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Shader profiling not yet implemented" });
         }
@@ -624,44 +631,105 @@ namespace UnityMcpBridge.Tools
             return JsonConvert.SerializeObject(new { message = "Rendering optimization suggestions not yet implemented" });
         }
 
-        private static string RunBenchmark(Dictionary<string, object> data)
+        private static string RunBenchmark(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Benchmark execution not yet implemented" });
         }
 
-        private static string CreateBenchmark(Dictionary<string, object> data)
+        private static string CreateBenchmark(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Benchmark creation not yet implemented" });
         }
 
-        private static string CompareBenchmarks(Dictionary<string, object> data)
+        private static string CompareBenchmarks(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Benchmark comparison not yet implemented" });
         }
 
-        private static string StressTest(Dictionary<string, object> data)
+        private static string StressTest(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Stress testing not yet implemented" });
         }
 
-        private static string GetBenchmarkResults(Dictionary<string, object> data)
+        private static string GetBenchmarkResults(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Benchmark results retrieval not yet implemented" });
         }
 
-        private static string ExportBenchmark(Dictionary<string, object> data)
+        private static string ExportBenchmark(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Benchmark export not yet implemented" });
         }
 
-        private static string ValidatePerformance(Dictionary<string, object> data)
+        private static string ValidatePerformance(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Performance validation not yet implemented" });
         }
 
-        private static string GenerateReport(Dictionary<string, object> data)
+        private static string GenerateReport(JObject data)
         {
             return JsonConvert.SerializeObject(new { message = "Report generation not yet implemented" });
+        }
+
+        // Helper methods for profile data collection
+        private static object GetMemoryProfileData()
+        {
+            try
+            {
+                return new
+                {
+                    totalAllocated = Profiler.GetTotalAllocatedMemory(),
+                    totalReserved = Profiler.GetTotalReservedMemory(),
+                    monoHeapSize = Profiler.GetMonoHeapSizeLong(),
+                    monoUsedSize = Profiler.GetMonoUsedSizeLong(),
+                    tempAllocatorSize = Profiler.GetTempAllocatorSize(),
+                    gfxDriverAllocatedMemory = Profiler.GetAllocatedMemoryForGraphicsDriver()
+                };
+            }
+            catch (Exception e)
+            {
+                return new { error = e.Message };
+            }
+        }
+
+        private static object GetCpuProfileData()
+        {
+            try
+            {
+                return new
+                {
+                    frameTime = Time.deltaTime * 1000, // Convert to milliseconds
+                    frameRate = 1.0f / Time.deltaTime,
+                    targetFrameRate = Application.targetFrameRate,
+                    vsyncCount = QualitySettings.vSyncCount,
+                    profilerEnabled = Profiler.enabled
+                };
+            }
+            catch (Exception e)
+            {
+                return new { error = e.Message };
+            }
+        }
+
+        private static object GetGpuProfileData()
+        {
+            try
+            {
+                return new
+                {
+                    drawCalls = UnityStats.drawCalls,
+                    batches = UnityStats.batches,
+                    triangles = UnityStats.triangles,
+                    vertices = UnityStats.vertices,
+                    setPassCalls = UnityStats.setPassCalls,
+                    shadowCasters = UnityStats.shadowCasters,
+                    visibleSkinnedMeshes = UnityStats.visibleSkinnedMeshes
+                };
+            }
+            catch (Exception e)
+            {
+                return new { error = e.Message };
+            }
         }
     }
 }

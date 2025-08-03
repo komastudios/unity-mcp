@@ -15,7 +15,7 @@ def register_build_tools(server: Server):
     
     @server.tool()
     async def manage_build(
-        action: str,
+        action: str = None,
         build_target: Optional[str] = None,
         build_path: Optional[str] = None,
         build_options: Optional[Dict[str, Any]] = None,
@@ -65,7 +65,7 @@ def register_build_tools(server: Server):
             
             # Send command to Unity
             from ..core.unity_bridge import send_command_to_unity
-            result = await send_command_to_unity("HandleManageBuild", command_data)
+            result = await send_command_to_unity("manage_build", command_data)
             
             return [types.TextContent(
                 type="text",
@@ -241,3 +241,5 @@ def register_build_tools(server: Server):
                 type="text",
                 text=f"Error in deployment operations: {str(e)}"
             )]
+    
+    return manage_build
