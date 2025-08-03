@@ -350,8 +350,16 @@ namespace UnityMcpBridge.Editor
                             );
                             break;
                         case "take_screenshot":
+                            var screenshotParams = new Dictionary<string, object>();
+                            if (commandData.@params != null)
+                            {
+                                foreach (var prop in commandData.@params.Properties())
+                                {
+                                    screenshotParams[prop.Name] = prop.Value.ToObject<object>();
+                                }
+                            }
                             result = JObject.FromObject(
-                                ScreenshotTool.TakeScreenshot(commandData.@params.ToObject<Dictionary<string, object>>())                            
+                                ScreenshotTool.TakeScreenshot(screenshotParams)
                             );
                             break;
                         case "manage_animation":
@@ -374,6 +382,37 @@ namespace UnityMcpBridge.Editor
                                 ManageInput.HandleCommand(commandData.@params)
                             );
                             break;
+                        case "manage_ui":
+                            var uiParams = new Dictionary<string, object>();
+                            if (commandData.@params != null)
+                            {
+                                foreach (var prop in commandData.@params.Properties())
+                                {
+                                    uiParams[prop.Name] = prop.Value.ToObject<object>();
+                                }
+                            }
+                            result = JObject.FromObject(
+                                ManageUI.HandleCommand(commandData.type, uiParams)
+                            );
+                            break;
+                        case "manage_lighting":
+                            var lightingParams = new Dictionary<string, object>();
+                            if (commandData.@params != null)
+                            {
+                                foreach (var prop in commandData.@params.Properties())
+                                {
+                                    lightingParams[prop.Name] = prop.Value.ToObject<object>();
+                                }
+                            }
+                            result = JObject.FromObject(
+                                ManageLighting.HandleCommand(lightingParams)
+                            );
+                            break;
+                        case "manage_particles":
+                            result = JObject.FromObject(
+                                ManageParticles.HandleCommand(commandData.@params)
+                            );
+                            break;
                         case "trigger_domain_reload":
                             result = JObject.FromObject(
                                 TriggerDomainReload.HandleCommand(commandData.@params)
@@ -391,13 +430,27 @@ namespace UnityMcpBridge.Editor
                             break;
                     }
 
+                    var jsonSettings = new JsonSerializerSettings
+                    {
+                        Formatting = Formatting.Indented,
+                        ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                        Converters = { new UnityJsonConverter() }
+                    };
+                    
                     responseJson = JsonConvert.SerializeObject(
                         new { status = "success", result },
-                        Formatting.Indented
+                        jsonSettings
                     );
                 }
                 catch (Exception ex)
                 {
+                    var jsonSettings = new JsonSerializerSettings
+                    {
+                        Formatting = Formatting.Indented,
+                        ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                        Converters = { new UnityJsonConverter() }
+                    };
+                    
                     responseJson = JsonConvert.SerializeObject(
                         new
                         {
@@ -405,7 +458,7 @@ namespace UnityMcpBridge.Editor
                             error = $"Failed to process command: {ex.Message}",
                             stackTrace = ex.StackTrace
                         },
-                        Formatting.Indented
+                        jsonSettings
                     );
                 }
 

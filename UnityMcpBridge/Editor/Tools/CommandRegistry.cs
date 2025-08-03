@@ -18,6 +18,10 @@ namespace UnityMcpBridge.Editor.Tools
             { "HandleManageEditor", ManageEditor.HandleCommand },
             { "HandleManageGameObject", ManageGameObject.HandleCommand },
             { "HandleManageAsset", ManageAsset.HandleCommand },
+            { "HandleManageParticles", ManageParticles.HandleCommand },
+            { "HandleManageTerrain", ManageTerrain.HandleCommand },
+            { "HandleManageAI", ManageAI.HandleCommand },
+            { "HandleManageNetworking", ManageNetworking.HandleCommand },
             { "HandleReadConsole", ReadConsole.HandleCommand },
             { "HandleExecuteMenuItem", ExecuteMenuItem.HandleCommand },
         };

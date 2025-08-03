@@ -280,20 +280,20 @@ namespace UnityMcpBridge.Editor.Tools
                 EditorUtility.SetDirty(targetObject);
 
                 // Get center based on collider type for response
-                Vector3 centerVector = Vector3.zero;
-                if (collider is BoxCollider boxCol)
-                    centerVector = boxCol.center;
+                Vector3 responseCenterVector = Vector3.zero;
+                if (collider is BoxCollider responseBoxCol)
+                    responseCenterVector = responseBoxCol.center;
                 else if (collider is SphereCollider sphereCol)
-                    centerVector = sphereCol.center;
+                    responseCenterVector = sphereCol.center;
                 else if (collider is CapsuleCollider capsuleCol)
-                    centerVector = capsuleCol.center;
+                    responseCenterVector = capsuleCol.center;
 
                 return Response.Success($"{colliderType} collider added to '{gameObjectName}'.", new
                 {
                     gameObjectName = gameObjectName,
                     colliderType = colliderType,
                     isTrigger = collider.isTrigger,
-                    center = new { x = centerVector.x, y = centerVector.y, z = centerVector.z }
+                    center = new { x = responseCenterVector.x, y = responseCenterVector.y, z = responseCenterVector.z }
                 });
             }
             catch (Exception e)
@@ -371,20 +371,20 @@ namespace UnityMcpBridge.Editor.Tools
                 EditorUtility.SetDirty(targetObject);
 
                 // Get center based on collider type for response
-                Vector3 centerVector = Vector3.zero;
-                if (collider is BoxCollider boxCol)
-                    centerVector = boxCol.center;
-                else if (collider is SphereCollider sphereCol)
-                    centerVector = sphereCol.center;
-                else if (collider is CapsuleCollider capsuleCol)
-                    centerVector = capsuleCol.center;
+                Vector3 modifyCenterVector = Vector3.zero;
+                if (collider is BoxCollider modifyBoxCol)
+                    modifyCenterVector = modifyBoxCol.center;
+                else if (collider is SphereCollider modifySphereCol)
+                    modifyCenterVector = modifySphereCol.center;
+                else if (collider is CapsuleCollider modifyCapsuleCol)
+                    modifyCenterVector = modifyCapsuleCol.center;
 
                 return Response.Success($"Collider on '{gameObjectName}' modified successfully.", new
                 {
                     gameObjectName = gameObjectName,
                     colliderType = collider.GetType().Name,
                     isTrigger = collider.isTrigger,
-                    center = new { x = centerVector.x, y = centerVector.y, z = centerVector.z }
+                    center = new { x = modifyCenterVector.x, y = modifyCenterVector.y, z = modifyCenterVector.z }
                 });
             }
             catch (Exception e)
