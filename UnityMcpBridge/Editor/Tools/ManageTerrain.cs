@@ -4,17 +4,18 @@ using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using UnityMcpBridge.Editor.Helpers;
 
-namespace UnityMcpBridge.Tools
+namespace UnityMcpBridge.Editor.Tools
 {
     public static class ManageTerrain
     {
-        [UnityMcpCommand("manage_terrain")]
-        public static Response HandleTerrainCommand(Dictionary<string, object> parameters)
+        public static object HandleCommand(JObject parameters)
         {
             try
             {
-                string action = parameters.GetValueOrDefault("action", "").ToString();
+                string action = parameters["action"]?.ToString() ?? "";
                 
                 return action switch
                 {
@@ -48,15 +49,15 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static Response CreateTerrain(Dictionary<string, object> parameters)
+        private static object CreateTerrain(JObject parameters)
         {
             try
             {
-                string terrainName = parameters.GetValueOrDefault("terrain_name", "NewTerrain").ToString();
-                var position = JsonConvert.DeserializeObject<float[]>(parameters.GetValueOrDefault("position", "[0,0,0]").ToString());
-                var size = JsonConvert.DeserializeObject<float[]>(parameters.GetValueOrDefault("size", "[100,30,100]").ToString());
-                int heightmapRes = Convert.ToInt32(parameters.GetValueOrDefault("heightmap_resolution", 513));
-                int detailRes = Convert.ToInt32(parameters.GetValueOrDefault("detail_resolution", 1024));
+                string terrainName = parameters["terrain_name"]?.ToString() ?? "NewTerrain";
+                var position = JsonConvert.DeserializeObject<float[]>(parameters["position"]?.ToString() ?? "[0,0,0]");
+                var size = JsonConvert.DeserializeObject<float[]>(parameters["size"]?.ToString() ?? "[100,30,100]");
+                int heightmapRes = parameters["heightmap_resolution"]?.ToObject<int>() ?? 513;
+                int detailRes = parameters["detail_resolution"]?.ToObject<int>() ?? 1024;
 
                 // Create terrain data
                 TerrainData terrainData = new TerrainData();
@@ -95,11 +96,11 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static Response ModifyTerrain(Dictionary<string, object> parameters)
+        private static object ModifyTerrain(JObject parameters)
         {
             try
             {
-                string terrainName = parameters.GetValueOrDefault("terrain_name", "").ToString();
+                string terrainName = parameters["terrain_name"]?.ToString() ?? "";
                 
                 Terrain terrain = FindTerrainByName(terrainName);
                 if (terrain == null)
@@ -137,15 +138,15 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static Response SculptTerrain(Dictionary<string, object> parameters)
+        private static object SculptTerrain(JObject parameters)
         {
             try
             {
-                string terrainName = parameters.GetValueOrDefault("terrain_name", "").ToString();
-                float brushSize = Convert.ToSingle(parameters.GetValueOrDefault("brush_size", 10.0f));
-                float brushStrength = Convert.ToSingle(parameters.GetValueOrDefault("brush_strength", 0.5f));
-                float heightValue = Convert.ToSingle(parameters.GetValueOrDefault("height_value", 0.0f));
-                var position = JsonConvert.DeserializeObject<float[]>(parameters.GetValueOrDefault("position", "[0,0]").ToString());
+                string terrainName = parameters["terrain_name"]?.ToString() ?? "";
+                float brushSize = parameters["brush_size"]?.ToObject<float>() ?? 10.0f;
+                float brushStrength = parameters["brush_strength"]?.ToObject<float>() ?? 0.5f;
+                float heightValue = parameters["height_value"]?.ToObject<float>() ?? 0.0f;
+                var position = JsonConvert.DeserializeObject<float[]>(parameters["position"]?.ToString() ?? "[0,0]");
 
                 Terrain terrain = FindTerrainByName(terrainName);
                 if (terrain == null)
@@ -207,13 +208,17 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static Response PaintTexture(Dictionary<string, object> parameters)
+        private static object PaintTexture(JObject parameters)
         {
             try
             {
-                string terrainName = parameters.GetValueOrDefault("terrain_name", "").ToString();
-                string texturePath = parameters.GetValueOrDefault("texture_path", "").ToString();
-                int layerIndex = Convert.ToInt32(parameters.GetValueOrDefault("layer_index", 0));
+                string terrainName = parameters["terrain_name"]?.ToString() ?? "";
+                int textureIndex = parameters["texture_index"]?.ToObject<int>() ?? 0;
+                var position = JsonConvert.DeserializeObject<float[]>(parameters["position"]?.ToString() ?? "[0,0]");
+                float brushSize = parameters["brush_size"]?.ToObject<float>() ?? 10.0f;
+                float brushStrength = parameters["brush_strength"]?.ToObject<float>() ?? 0.5f;
+                string texturePath = parameters["texture_path"]?.ToString() ?? "";
+                int layerIndex = parameters["layer_index"]?.ToObject<int>() ?? 0;
 
                 Terrain terrain = FindTerrainByName(terrainName);
                 if (terrain == null)
@@ -260,13 +265,14 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static Response PlaceTrees(Dictionary<string, object> parameters)
+        private static object PlaceTrees(JObject parameters)
         {
             try
             {
-                string terrainName = parameters.GetValueOrDefault("terrain_name", "").ToString();
-                string treePrefabPath = parameters.GetValueOrDefault("tree_prefab_path", "").ToString();
-                float density = Convert.ToSingle(parameters.GetValueOrDefault("tree_density", 0.5f));
+                string terrainName = parameters["terrain_name"]?.ToString() ?? "";
+                string prefabPath = parameters["prefab_path"]?.ToString() ?? "";
+                var positions = JsonConvert.DeserializeObject<float[][]>(parameters["positions"]?.ToString() ?? "[]");
+                int count = parameters["count"]?.ToObject<int>() ?? 1;
 
                 Terrain terrain = FindTerrainByName(terrainName);
                 if (terrain == null)
@@ -328,40 +334,34 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static Response PlaceGrass(Dictionary<string, object> parameters)
+        private static object PlaceGrass(JObject parameters)
         {
-            // Implementation for grass placement
-            return Response.Success("Grass placement functionality not yet implemented.");
+            return Response.Error("Grass placement not yet implemented");
         }
 
-        private static Response ConfigureWind(Dictionary<string, object> parameters)
+        private static object ConfigureWind(JObject parameters)
         {
-            // Implementation for wind configuration
-            return Response.Success("Wind configuration functionality not yet implemented.");
+            return Response.Error("Wind configuration not yet implemented");
         }
 
-        private static Response BakeTerrain(Dictionary<string, object> parameters)
+        private static object BakeTerrain(JObject parameters)
         {
-            // Implementation for terrain baking
-            return Response.Success("Terrain baking functionality not yet implemented.");
+            return Response.Error("Terrain baking not yet implemented");
         }
 
-        private static Response ListTerrains(Dictionary<string, object> parameters)
+        private static object ListTerrains(JObject parameters)
         {
             try
             {
-                Terrain[] terrains = UnityEngine.Object.FindObjectsOfType<Terrain>();
-                
-                var terrainList = terrains.Select(terrain => new
+                Terrain[] terrains = Object.FindObjectsOfType<Terrain>();
+                var terrainList = terrains.Select(t => new
                 {
-                    name = terrain.name,
-                    id = terrain.GetInstanceID(),
-                    position = SerializeVector3(terrain.transform.position),
-                    size = SerializeVector3(terrain.terrainData.size),
-                    heightmap_resolution = terrain.terrainData.heightmapResolution,
-                    detail_resolution = terrain.terrainData.detailResolution,
-                    tree_count = terrain.terrainData.treeInstanceCount,
-                    layer_count = terrain.terrainData.terrainLayers?.Length ?? 0
+                    name = t.name,
+                    id = t.GetInstanceID(),
+                    position = SerializeVector3(t.transform.position),
+                    size = SerializeVector3(t.terrainData.size),
+                    heightmap_resolution = t.terrainData.heightmapResolution,
+                    detail_resolution = t.terrainData.detailResolution
                 }).ToArray();
 
                 return Response.Success($"Found {terrains.Length} terrain(s).", new
@@ -376,11 +376,11 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static Response GetTerrainInfo(Dictionary<string, object> parameters)
+        private static object GetTerrainInfo(JObject parameters)
         {
             try
             {
-                string terrainName = parameters.GetValueOrDefault("terrain_name", "").ToString();
+                string terrainName = parameters["terrain_name"]?.ToString() ?? "";
                 
                 Terrain terrain = FindTerrainByName(terrainName);
                 if (terrain == null)
@@ -388,21 +388,20 @@ namespace UnityMcpBridge.Tools
                     return Response.Error($"Terrain '{terrainName}' not found.");
                 }
 
-                TerrainData terrainData = terrain.terrainData;
-
-                return Response.Success($"Terrain '{terrainName}' information retrieved.", new
+                var terrainInfo = new
                 {
                     name = terrain.name,
                     id = terrain.GetInstanceID(),
                     position = SerializeVector3(terrain.transform.position),
-                    size = SerializeVector3(terrainData.size),
-                    heightmap_resolution = terrainData.heightmapResolution,
-                    detail_resolution = terrainData.detailResolution,
-                    tree_count = terrainData.treeInstanceCount,
-                    layer_count = terrainData.terrainLayers?.Length ?? 0,
-                    tree_prototypes = terrainData.treePrototypes?.Length ?? 0,
-                    detail_prototypes = terrainData.detailPrototypes?.Length ?? 0
-                });
+                    size = SerializeVector3(terrain.terrainData.size),
+                    heightmap_resolution = terrain.terrainData.heightmapResolution,
+                    detail_resolution = terrain.terrainData.detailResolution,
+                    texture_count = terrain.terrainData.terrainLayers?.Length ?? 0,
+                    tree_prototype_count = terrain.terrainData.treePrototypes?.Length ?? 0,
+                    detail_prototype_count = terrain.terrainData.detailPrototypes?.Length ?? 0
+                };
+
+                return Response.Success($"Retrieved info for terrain '{terrainName}'.", terrainInfo);
             }
             catch (Exception e)
             {
@@ -410,11 +409,11 @@ namespace UnityMcpBridge.Tools
             }
         }
 
-        private static Response DeleteTerrain(Dictionary<string, object> parameters)
+        private static object DeleteTerrain(JObject parameters)
         {
             try
             {
-                string terrainName = parameters.GetValueOrDefault("terrain_name", "").ToString();
+                string terrainName = parameters["terrain_name"]?.ToString() ?? "";
                 
                 Terrain terrain = FindTerrainByName(terrainName);
                 if (terrain == null)
@@ -422,7 +421,8 @@ namespace UnityMcpBridge.Tools
                     return Response.Error($"Terrain '{terrainName}' not found.");
                 }
 
-                UnityEngine.Object.DestroyImmediate(terrain.gameObject);
+                // Delete the terrain GameObject
+                Object.DestroyImmediate(terrain.gameObject);
 
                 return Response.Success($"Terrain '{terrainName}' deleted successfully.");
             }
@@ -433,55 +433,55 @@ namespace UnityMcpBridge.Tools
         }
 
         // Heightmap operations
-        private static Response ImportHeightmap(Dictionary<string, object> parameters)
+        private static object ImportHeightmap(JObject parameters)
         {
-            return Response.Success("Heightmap import functionality not yet implemented.");
+            return Response.Error("Heightmap import not yet implemented");
         }
 
-        private static Response ExportHeightmap(Dictionary<string, object> parameters)
+        private static object ExportHeightmap(JObject parameters)
         {
-            return Response.Success("Heightmap export functionality not yet implemented.");
+            return Response.Error("Heightmap export not yet implemented");
         }
 
-        private static Response SetHeightmap(Dictionary<string, object> parameters)
+        private static object SetHeightmap(JObject parameters)
         {
-            return Response.Success("Set heightmap functionality not yet implemented.");
+            return Response.Error("Set heightmap not yet implemented");
         }
 
-        private static Response GetHeightmap(Dictionary<string, object> parameters)
+        private static object GetHeightmap(JObject parameters)
         {
-            return Response.Success("Get heightmap functionality not yet implemented.");
+            return Response.Error("Get heightmap not yet implemented");
         }
 
-        private static Response GenerateNoiseHeightmap(Dictionary<string, object> parameters)
+        private static object GenerateNoiseHeightmap(JObject parameters)
         {
-            return Response.Success("Generate noise heightmap functionality not yet implemented.");
+            return Response.Error("Generate noise heightmap not yet implemented");
         }
 
         // Streaming operations
-        private static Response SetupStreaming(Dictionary<string, object> parameters)
+        private static object SetupStreaming(JObject parameters)
         {
-            return Response.Success("Terrain streaming setup functionality not yet implemented.");
+            return Response.Error("Streaming setup not yet implemented");
         }
 
-        private static Response CreateTerrainGroup(Dictionary<string, object> parameters)
+        private static object CreateTerrainGroup(JObject parameters)
         {
-            return Response.Success("Create terrain group functionality not yet implemented.");
+            return Response.Error("Create terrain group not yet implemented");
         }
 
-        private static Response LoadTerrainChunk(Dictionary<string, object> parameters)
+        private static object LoadTerrainChunk(JObject parameters)
         {
-            return Response.Success("Load terrain chunk functionality not yet implemented.");
+            return Response.Error("Load terrain chunk not yet implemented");
         }
 
-        private static Response UnloadTerrainChunk(Dictionary<string, object> parameters)
+        private static object UnloadTerrainChunk(JObject parameters)
         {
-            return Response.Success("Unload terrain chunk functionality not yet implemented.");
+            return Response.Error("Unload terrain chunk not yet implemented");
         }
 
-        private static Response GetStreamingStatus(Dictionary<string, object> parameters)
+        private static object GetStreamingStatus(JObject parameters)
         {
-            return Response.Success("Get streaming status functionality not yet implemented.");
+            return Response.Error("Get streaming status not yet implemented");
         }
 
         // Helper methods
