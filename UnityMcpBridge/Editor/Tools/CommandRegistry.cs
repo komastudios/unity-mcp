@@ -18,14 +18,22 @@ namespace UnityMcpBridge.Editor.Tools
             { "HandleManageEditor", ManageEditor.HandleCommand },
             { "HandleManageGameObject", ManageGameObject.HandleCommand },
             { "HandleManageAsset", ManageAsset.HandleCommand },
+            { "HandleManageAnimation", ManageAnimation.HandleCommand },
+            { "HandleManageAudio", ManageAudio.HandleCommand },
+            { "HandleManageInput", ManageInput.HandleCommand },
+            { "HandleManageLighting", ManageLighting.HandleCommand },
             { "HandleManageParticles", ManageParticles.HandleCommand },
+            { "HandleManagePhysics", ManagePhysics.HandleCommand },
             { "HandleManageTerrain", ManageTerrain.HandleCommand },
+            { "HandleManageUI", ManageUI.HandleCommand },
             { "HandleManageAI", ManageAI.HandleCommand },
             { "HandleManageNetworking", ManageNetworking.HandleCommand },
             { "HandleManageBuild", ManageBuild.HandleCommand },
             { "HandleManagePerformance", ManagePerformance.HandleCommand },
             { "HandleReadConsole", ReadConsole.HandleCommand },
             { "HandleExecuteMenuItem", ExecuteMenuItem.HandleCommand },
+            { "HandleScreenshotTool", ScreenshotTool.HandleCommand },
+            { "HandleTriggerDomainReload", TriggerDomainReload.HandleCommand },
         };
 
         /// <summary>
