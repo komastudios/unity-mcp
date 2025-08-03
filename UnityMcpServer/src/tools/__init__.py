@@ -11,6 +11,10 @@ from .manage_ui import register_manage_ui_tools
 from .manage_lighting import register_manage_lighting_tools
 from .manage_particles import register_manage_particles_tools
 from .manage_terrain import register_manage_terrain_tools
+from .manage_ai import register_ai_tools
+from .manage_networking import register_networking_tools
+from .manage_build import register_build_tools
+from .manage_performance import register_performance_tools
 from .read_console import register_read_console_tools
 from .execute_menu_item import register_execute_menu_item_tools
 from .take_screenshot import register_take_screenshot_tools
@@ -34,8 +38,10 @@ def register_all_tools(mcp):
     register_manage_lighting_tools(mcp)
     register_manage_particles_tools(mcp)
     register_manage_terrain_tools(mcp)
-    register_manage_ai_tools(mcp)
-    register_manage_networking_tools(mcp)
+    register_ai_tools(mcp)
+    register_networking_tools(mcp)
+    register_build_tools(mcp)
+    register_performance_tools(mcp)
     register_read_console_tools(mcp)
     register_execute_menu_item_tools(mcp)
     register_take_screenshot_tools(mcp)

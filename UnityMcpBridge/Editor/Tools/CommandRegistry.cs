@@ -22,6 +22,8 @@ namespace UnityMcpBridge.Editor.Tools
             { "HandleManageTerrain", ManageTerrain.HandleCommand },
             { "HandleManageAI", ManageAI.HandleCommand },
             { "HandleManageNetworking", ManageNetworking.HandleCommand },
+            { "HandleManageBuild", ManageBuild.HandleCommand },
+            { "HandleManagePerformance", ManagePerformance.HandleCommand },
             { "HandleReadConsole", ReadConsole.HandleCommand },
             { "HandleExecuteMenuItem", ExecuteMenuItem.HandleCommand },
         };
