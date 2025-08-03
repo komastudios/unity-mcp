@@ -376,12 +376,22 @@ namespace UnityMcpBridge.Editor
                             break;
                         case "manage_ui":
                             result = JObject.FromObject(
-                                ManageUI.HandleCommand(commandData.type, commandData.@params.ToObject<Dictionary<string, object>>())
+                                ManageUI.HandleCommand(commandData.@params)
                             );
                             break;
                         case "manage_lighting":
                             result = JObject.FromObject(
-                                ManageLighting.HandleCommand(commandData.@params.ToObject<Dictionary<string, object>>())
+                                ManageLighting.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_build":
+                            result = JObject.FromObject(
+                                ManageBuild.HandleCommand(commandData.@params)
+                            );
+                            break;
+                        case "manage_performance":
+                            result = JObject.FromObject(
+                                ManagePerformance.HandleCommand(commandData.@params)
                             );
                             break;
                         case "manage_particles":
