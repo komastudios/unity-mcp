@@ -64,8 +64,8 @@ def register_build_tools(server: Server):
             }
             
             # Send command to Unity
-            from ..unity_bridge import send_command_to_unity
-            result = await send_command_to_unity("manage_build", command_data)
+            from ..core.unity_bridge import send_command_to_unity
+            result = await send_command_to_unity("ManageBuild", command_data)
             
             return [types.TextContent(
                 type="text",
@@ -121,7 +121,7 @@ def register_build_tools(server: Server):
                 **kwargs
             }
             
-            from ..unity_bridge import send_command_to_unity
+            from ..core.unity_bridge import send_command_to_unity
             result = await send_command_to_unity("asset_bundle_operations", command_data)
             
             return [types.TextContent(
@@ -175,7 +175,7 @@ def register_build_tools(server: Server):
                 **kwargs
             }
             
-            from ..unity_bridge import send_command_to_unity
+            from ..core.unity_bridge import send_command_to_unity
             result = await send_command_to_unity("build_pipeline_operations", command_data)
             
             return [types.TextContent(
@@ -228,7 +228,7 @@ def register_build_tools(server: Server):
                 **kwargs
             }
             
-            from ..unity_bridge import send_command_to_unity
+            from ..core.unity_bridge import send_command_to_unity
             result = await send_command_to_unity("deployment_operations", command_data)
             
             return [types.TextContent(

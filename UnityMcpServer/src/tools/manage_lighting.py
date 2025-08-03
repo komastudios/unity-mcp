@@ -129,14 +129,8 @@ def manage_lighting(
         }
     }
     
-    try:
-        from ..core.unity_bridge import send_command_to_unity
-    except ImportError:
-        # Fallback for testing
-        def send_command_to_unity(command_data):
-            return {"success": False, "message": "Unity bridge not available"}
-    
-    result = send_command_to_unity(command_data)
+    from ..core.unity_bridge import send_command_to_unity
+    result = await send_command_to_unity("ManageLighting", command_data)
     
     # Cache read operation results
     if action in ['get_light_info', 'list_lights', 'get_material_info', 'list_materials', 'get_lighting_info']:

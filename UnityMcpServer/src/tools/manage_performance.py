@@ -58,7 +58,7 @@ def register_performance_tools(server: Server):
             }
             
             # Send command to Unity
-            from ..unity_bridge import send_command_to_unity
+            from ..core.unity_bridge import send_command_to_unity
             result = await send_command_to_unity("manage_performance", command_data)
             
             return [types.TextContent(
