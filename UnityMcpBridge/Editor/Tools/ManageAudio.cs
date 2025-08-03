@@ -404,11 +404,16 @@ namespace UnityMcpBridge.Editor.Tools
                     }
                 }
 
-                AudioMixer mixer = ScriptableObject.CreateInstance<AudioMixer>();
-                mixer.name = name;
-
+                // Create AudioMixer asset (AudioMixer is not a ScriptableObject)
                 string fullPath = $"{path}/{name}.mixer";
-                AssetDatabase.CreateAsset(mixer, fullPath);
+                AudioMixer mixer = AssetDatabase.LoadAssetAtPath<AudioMixer>(fullPath);
+                if (mixer == null)
+                {
+                    // AudioMixer creation requires special handling
+                    // For now, we'll create a placeholder and log the requirement
+                    Debug.LogWarning("AudioMixer creation requires Unity's built-in audio mixer creation workflow");
+                    return Response.Error("AudioMixer creation must be done through Unity's Audio Mixer window");
+                }
 
                 // Create default groups if specified
                 if (@params["groups"] != null)
@@ -723,7 +728,7 @@ namespace UnityMcpBridge.Editor.Tools
                     bool removeExisting = @params["remove_existing"]?.ToObject<bool>() ?? false;
                     if (removeExisting)
                     {
-                        Object.DestroyImmediate(existingListener);
+                        UnityEngine.Object.DestroyImmediate(existingListener);
                     }
                     else
                     {
@@ -741,8 +746,7 @@ namespace UnityMcpBridge.Editor.Tools
 
                 return Response.Success($"AudioListener added to '{gameObjectName}'.", new
                 {
-                    gameObjectName = gameObjectName,
-                    velocityUpdateMode = AudioSettings.velocityUpdateMode.ToString()
+                    gameObjectName = gameObjectName
                 });
             }
             catch (Exception e)

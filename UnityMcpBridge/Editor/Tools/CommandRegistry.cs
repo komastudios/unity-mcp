@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using UnityMcpBridge.Tools;
 
 namespace UnityMcpBridge.Editor.Tools
 {
@@ -13,27 +14,27 @@ namespace UnityMcpBridge.Editor.Tools
         // to the corresponding static HandleCommand method in the appropriate tool class.
         private static readonly Dictionary<string, Func<JObject, object>> _handlers = new()
         {
-            { "HandleManageScript", ManageScript.HandleCommand },
-            { "HandleManageScene", ManageScene.HandleCommand },
-            { "HandleManageEditor", ManageEditor.HandleCommand },
-            { "HandleManageGameObject", ManageGameObject.HandleCommand },
-            { "HandleManageAsset", ManageAsset.HandleCommand },
-            { "HandleManageAnimation", ManageAnimation.HandleCommand },
-            { "HandleManageAudio", ManageAudio.HandleCommand },
-            { "HandleManageInput", ManageInput.HandleCommand },
-            { "HandleManageLighting", ManageLighting.HandleCommand },
-            { "HandleManageParticles", ManageParticles.HandleCommand },
-            { "HandleManagePhysics", ManagePhysics.HandleCommand },
-            { "HandleManageTerrain", ManageTerrain.HandleCommand },
-            { "HandleManageUI", ManageUI.HandleCommand },
-            { "HandleManageAI", ManageAI.HandleCommand },
-            { "HandleManageNetworking", ManageNetworking.HandleCommand },
-            { "HandleManageBuild", ManageBuild.HandleCommand },
-            { "HandleManagePerformance", ManagePerformance.HandleCommand },
-            { "HandleReadConsole", ReadConsole.HandleCommand },
-            { "HandleExecuteMenuItem", ExecuteMenuItem.HandleCommand },
-            { "HandleScreenshotTool", ScreenshotTool.HandleCommand },
-            { "HandleTriggerDomainReload", TriggerDomainReload.HandleCommand },
+            { "HandleManageScript", (JObject @params) => ManageScript.HandleCommand(@params) },
+            { "HandleManageScene", (JObject @params) => ManageScene.HandleCommand(@params) },
+            { "HandleManageEditor", (JObject @params) => ManageEditor.HandleCommand(@params) },
+            { "HandleManageGameObject", (JObject @params) => ManageGameObject.HandleCommand(@params) },
+            { "HandleManageAsset", (JObject @params) => ManageAsset.HandleCommand(@params) },
+            { "HandleManageAnimation", (JObject @params) => ManageAnimation.HandleCommand(@params) },
+            { "HandleManageAudio", (JObject @params) => ManageAudio.HandleCommand(@params) },
+            { "HandleManageInput", (JObject @params) => ManageInput.HandleCommand(@params) },
+            { "HandleManageLighting", (JObject @params) => ManageLighting.HandleCommand(@params.ToObject<Dictionary<string, object>>()) },
+            { "HandleManageParticles", (JObject @params) => ManageParticles.HandleCommand(@params) },
+            { "HandleManagePhysics", (JObject @params) => ManagePhysics.HandleCommand(@params) },
+            { "HandleManageTerrain", (JObject @params) => ManageTerrain.HandleCommand(@params) },
+            { "HandleManageUI", (JObject @params) => ManageUI.HandleCommand(@params["action"]?.ToString(), @params.ToObject<Dictionary<string, object>>()) },
+            { "HandleManageAI", (JObject @params) => ManageAI.HandleAICommand(@params) },
+            { "HandleManageNetworking", (JObject @params) => ManageNetworking.HandleNetworkingCommand(@params) },
+            { "HandleManageBuild", (JObject @params) => ManageBuild.HandleBuildCommand(@params.ToString()) },
+            { "HandleManagePerformance", (JObject @params) => ManagePerformance.HandlePerformanceCommand(@params.ToString()) },
+            { "HandleReadConsole", (JObject @params) => ReadConsole.HandleCommand(@params) },
+            { "HandleExecuteMenuItem", (JObject @params) => ExecuteMenuItem.HandleCommand(@params) },
+            { "HandleScreenshotTool", (JObject @params) => ScreenshotTool.TakeScreenshot(@params) },
+            { "HandleTriggerDomainReload", (JObject @params) => TriggerDomainReload.HandleCommand(@params) },
         };
 
         /// <summary>

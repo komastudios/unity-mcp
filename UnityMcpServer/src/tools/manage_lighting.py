@@ -147,7 +147,7 @@ def manage_lighting(
     
     return result
 
-def register_manage_lighting_tools():
+def register_manage_lighting_tools(mcp):
     """Register all lighting management tools"""
     # The @register_tool decorator already handles registration
     pass

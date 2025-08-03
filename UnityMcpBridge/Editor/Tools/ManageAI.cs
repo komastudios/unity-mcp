@@ -5,11 +5,30 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using System;
+using UnityMcpBridge.Editor.Helpers;
 
 namespace UnityMcpBridge.Tools
 {
     public static class ManageAI
     {
+        /// <summary>
+        /// Helper method to safely serialize Vector3 objects to avoid circular reference issues
+        /// </summary>
+        private static JObject SerializeVector3(Vector3 vector)
+        {
+            return new JObject
+            {
+                ["x"] = vector.x,
+                ["y"] = vector.y,
+                ["z"] = vector.z
+            };
+        }
+
+        public static object HandleCommand(JObject parameters)
+        {
+            return HandleAICommand(parameters);
+        }
+
         public static JObject HandleAICommand(JObject parameters)
         {
             try
@@ -238,7 +257,7 @@ namespace UnityMcpBridge.Tools
                 {
                     ["success"] = pathSet,
                     ["message"] = pathSet ? $"Destination set for agent '{agentName}'" : "Failed to set destination - no valid path found",
-                    ["destination"] = UnityMcpBridge.SerializeVector3(targetPos),
+                    ["destination"] = SerializeVector3(targetPos),
                     ["path_pending"] = agent.pathPending,
                     ["has_path"] = agent.hasPath
                 };
@@ -257,7 +276,7 @@ namespace UnityMcpBridge.Tools
         {
             try
             {
-                string obstacleName = parameters["agent_name"]?.ToString() ?? "NavMeshObstacle";
+                string obstacleName = parameters["obstacle_name"]?.ToString() ?? "NavMeshObstacle";
                 var obstacleSettings = parameters["obstacle_settings"]?.ToObject<Dictionary<string, object>>() ?? new Dictionary<string, object>();
                 
                 GameObject obstacleObj = new GameObject(obstacleName);
@@ -272,13 +291,15 @@ namespace UnityMcpBridge.Tools
                 
                 if (obstacleSettings.ContainsKey("center"))
                 {
-                    var center = ((JArray)obstacleSettings["center"]).ToObject<float[]>();
+                    var centerData = (JToken)obstacleSettings["center"];
+                    var center = centerData.ToObject<float[]>();
                     obstacle.center = new Vector3(center[0], center[1], center[2]);
                 }
                 
                 if (obstacleSettings.ContainsKey("size"))
                 {
-                    var size = ((JArray)obstacleSettings["size"]).ToObject<float[]>();
+                    var sizeData = (JToken)obstacleSettings["size"];
+                    var size = sizeData.ToObject<float[]>();
                     obstacle.size = new Vector3(size[0], size[1], size[2]);
                 }
                 
@@ -336,7 +357,7 @@ namespace UnityMcpBridge.Tools
                     buildSettings.minRegionArea = Convert.ToSingle(bakeSettings["min_region_area"]);
                 
                 // Bake NavMesh
-                NavMeshBuilder.BuildNavMesh();
+                UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
                 
                 return new JObject
                 {
@@ -367,9 +388,9 @@ namespace UnityMcpBridge.Tools
                     {
                         ["name"] = agent.gameObject.name,
                         ["id"] = agent.gameObject.GetInstanceID(),
-                        ["position"] = UnityMcpBridge.SerializeVector3(agent.transform.position),
-                        ["destination"] = UnityMcpBridge.SerializeVector3(agent.destination),
-                        ["velocity"] = UnityMcpBridge.SerializeVector3(agent.velocity),
+                        ["position"] = SerializeVector3(agent.transform.position),
+                        ["destination"] = SerializeVector3(agent.destination),
+                        ["velocity"] = SerializeVector3(agent.velocity),
                         ["speed"] = agent.speed,
                         ["is_on_navmesh"] = agent.isOnNavMesh,
                         ["has_path"] = agent.hasPath,
@@ -428,9 +449,9 @@ namespace UnityMcpBridge.Tools
                 {
                     ["name"] = agent.gameObject.name,
                     ["id"] = agent.gameObject.GetInstanceID(),
-                    ["position"] = UnityMcpBridge.SerializeVector3(agent.transform.position),
-                    ["destination"] = UnityMcpBridge.SerializeVector3(agent.destination),
-                    ["velocity"] = UnityMcpBridge.SerializeVector3(agent.velocity),
+                    ["position"] = SerializeVector3(agent.transform.position),
+                    ["destination"] = SerializeVector3(agent.destination),
+                    ["velocity"] = SerializeVector3(agent.velocity),
                     ["speed"] = agent.speed,
                     ["angular_speed"] = agent.angularSpeed,
                     ["acceleration"] = agent.acceleration,

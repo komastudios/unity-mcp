@@ -6,11 +6,18 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using UnityMcpBridge.Editor.Helpers;
 
 namespace UnityMcpBridge.Tools
 {
     public static class ManageBuild
     {
+        public static object HandleCommand(JObject parameters)
+        {
+            return HandleBuildCommand(parameters.ToString());
+        }
+
         public static string HandleBuildCommand(string jsonData)
         {
             try

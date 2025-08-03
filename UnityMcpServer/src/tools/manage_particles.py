@@ -4,8 +4,8 @@ Provides comprehensive particle system creation, modification, and control capab
 """
 
 import json
+from mcp.server.fastmcp import FastMCP, Context
 from typing import Any, Dict, List, Optional, Union
-from mcp.server import Server
 from mcp.types import Tool, TextContent
 
 try:
@@ -18,11 +18,12 @@ except ImportError:
         def send_command(self, command_data):
             return {"success": False, "message": "Unity client not available"}
 
-def register_manage_particles_tools(mcp: Server):
+def register_manage_particles_tools(mcp: FastMCP):
     """Register all particle system management tools with the MCP server."""
     
-    @mcp.call_tool()
-    async def manage_particles(
+    @mcp.tool()
+    def manage_particles(
+        ctx: Context,
         action: str,
         particle_system_name: Optional[str] = None,
         position: Optional[List[float]] = None,
@@ -82,7 +83,7 @@ def register_manage_particles_tools(mcp: Server):
         material_name: Optional[str] = None,
         shader_name: Optional[str] = None,
         properties: Optional[Dict[str, Any]] = None
-    ) -> List[TextContent]:
+    ) -> Dict[str, Any]:
         """
         Manage particle systems in Unity.
         
@@ -234,16 +235,23 @@ def register_manage_particles_tools(mcp: Server):
         if properties is not None:
             params["properties"] = properties
         
-        # Send command to Unity
-        client = UnityClient()
-        result = await client.send_command("manage_particles", params)
-        
-        # Cache results for read operations
-        if action in ["get_particle_info", "list_particle_systems"]:
-            cache_key = f"particles_{action}_{particle_system_name or 'all'}"
-            client.cache_result(cache_key, result)
-        
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        try:
+            # Remove None values from params
+            params = {k: v for k, v in params.items() if v is not None}
+            
+            # Send command to Unity
+            from unity_connection import get_unity_connection
+            response = get_unity_connection().send_command("manage_particles", params)
+            
+            # Process response
+            if response.get("success"):
+                data = response.get("data")
+                return {"success": True, "message": response.get("message", "Particle operation successful."), "data": data}
+            else:
+                return {"success": False, "message": response.get("error", "An unknown error occurred during particle management.")}
+                
+        except Exception as e:
+            return {"success": False, "message": f"Python error managing particles: {str(e)}"}
 
 # Tool definitions for the MCP server
 PARTICLE_TOOLS = [

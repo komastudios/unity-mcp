@@ -4,13 +4,20 @@ using UnityEngine;
 using System.IO;
 using System.Reflection;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+using UnityMcpBridge.Editor.Helpers;
 
 namespace UnityMcpBridge.Editor.Tools
 {
     public static class ScreenshotTool
     {
-        public static object TakeScreenshot(Dictionary<string, object> args)
+        public static object HandleCommand(JObject parameters)
         {
+            return TakeScreenshot(parameters);
+        }
+        public static object TakeScreenshot(JObject parameters)
+        {
+            var args = parameters.ToObject<Dictionary<string, object>>();
             string view = args.ContainsKey("view") ? args["view"].ToString().ToLower() : null;
             int? width = args.ContainsKey("width") ? (int?)System.Convert.ToInt32(args["width"]) : null;
             int? height = args.ContainsKey("height") ? (int?)System.Convert.ToInt32(args["height"]) : null;

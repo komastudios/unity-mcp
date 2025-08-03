@@ -270,9 +270,10 @@ namespace UnityMcpBridge.Editor.Tools
             try
             {
                 string terrainName = parameters["terrain_name"]?.ToString() ?? "";
-                string prefabPath = parameters["prefab_path"]?.ToString() ?? "";
+                string treePrefabPath = parameters["prefab_path"]?.ToString() ?? "";
                 var positions = JsonConvert.DeserializeObject<float[][]>(parameters["positions"]?.ToString() ?? "[]");
                 int count = parameters["count"]?.ToObject<int>() ?? 1;
+                float density = parameters["density"]?.ToObject<float>() ?? 0.1f;
 
                 Terrain terrain = FindTerrainByName(terrainName);
                 if (terrain == null)
@@ -353,7 +354,7 @@ namespace UnityMcpBridge.Editor.Tools
         {
             try
             {
-                Terrain[] terrains = Object.FindObjectsOfType<Terrain>();
+                Terrain[] terrains = UnityEngine.Object.FindObjectsOfType<Terrain>();
                 var terrainList = terrains.Select(t => new
                 {
                     name = t.name,
@@ -422,7 +423,7 @@ namespace UnityMcpBridge.Editor.Tools
                 }
 
                 // Delete the terrain GameObject
-                Object.DestroyImmediate(terrain.gameObject);
+                UnityEngine.Object.DestroyImmediate(terrain.gameObject);
 
                 return Response.Success($"Terrain '{terrainName}' deleted successfully.");
             }

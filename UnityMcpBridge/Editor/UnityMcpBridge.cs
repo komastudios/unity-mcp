@@ -350,16 +350,8 @@ namespace UnityMcpBridge.Editor
                             );
                             break;
                         case "take_screenshot":
-                            var screenshotParams = new Dictionary<string, object>();
-                            if (commandData.@params != null)
-                            {
-                                foreach (var prop in commandData.@params.Properties())
-                                {
-                                    screenshotParams[prop.Name] = prop.Value.ToObject<object>();
-                                }
-                            }
                             result = JObject.FromObject(
-                                ScreenshotTool.TakeScreenshot(screenshotParams)
+                                ScreenshotTool.TakeScreenshot(commandData.@params)
                             );
                             break;
                         case "manage_animation":
@@ -383,29 +375,13 @@ namespace UnityMcpBridge.Editor
                             );
                             break;
                         case "manage_ui":
-                            var uiParams = new Dictionary<string, object>();
-                            if (commandData.@params != null)
-                            {
-                                foreach (var prop in commandData.@params.Properties())
-                                {
-                                    uiParams[prop.Name] = prop.Value.ToObject<object>();
-                                }
-                            }
                             result = JObject.FromObject(
-                                ManageUI.HandleCommand(commandData.type, uiParams)
+                                ManageUI.HandleCommand(commandData.type, commandData.@params.ToObject<Dictionary<string, object>>())
                             );
                             break;
                         case "manage_lighting":
-                            var lightingParams = new Dictionary<string, object>();
-                            if (commandData.@params != null)
-                            {
-                                foreach (var prop in commandData.@params.Properties())
-                                {
-                                    lightingParams[prop.Name] = prop.Value.ToObject<object>();
-                                }
-                            }
                             result = JObject.FromObject(
-                                ManageLighting.HandleCommand(lightingParams)
+                                ManageLighting.HandleCommand(commandData.@params.ToObject<Dictionary<string, object>>())
                             );
                             break;
                         case "manage_particles":

@@ -6,6 +6,8 @@ using UnityEditor;
 using UnityEngine.Profiling;
 using UnityEditorInternal;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using UnityMcpBridge.Editor.Helpers;
 
 namespace UnityMcpBridge.Tools
 {
@@ -13,6 +15,11 @@ namespace UnityMcpBridge.Tools
     {
         private static bool isProfilingActive = false;
         private static DateTime profilingStartTime;
+
+        public static object HandleCommand(JObject parameters)
+        {
+            return HandlePerformanceCommand(parameters.ToString());
+        }
 
         public static string HandlePerformanceCommand(string jsonData)
         {
@@ -212,8 +219,8 @@ namespace UnityMcpBridge.Tools
                     frameCount = frameCount,
                     firstFrame = ProfilerDriver.firstFrameIndex,
                     lastFrame = ProfilerDriver.lastFrameIndex,
-                    memoryUsage = Profiler.GetTotalAllocatedMemory(0),
-                    reservedMemory = Profiler.GetTotalReservedMemory(0)
+                    memoryUsage = Profiler.GetTotalAllocatedMemory(),
+                    reservedMemory = Profiler.GetTotalReservedMemory()
                 };
 
                 return JsonConvert.SerializeObject(profileData);
@@ -230,8 +237,8 @@ namespace UnityMcpBridge.Tools
             {
                 var analysis = new
                 {
-                    memoryUsage = Profiler.GetTotalAllocatedMemory(0) / (1024 * 1024), // MB
-                    reservedMemory = Profiler.GetTotalReservedMemory(0) / (1024 * 1024), // MB
+                    memoryUsage = Profiler.GetTotalAllocatedMemory() / (1024 * 1024), // MB
+                    reservedMemory = Profiler.GetTotalReservedMemory() / (1024 * 1024), // MB
                     frameRate = Application.targetFrameRate,
                     vsyncCount = QualitySettings.vSyncCount,
                     qualityLevel = QualitySettings.GetQualityLevel(),
@@ -252,14 +259,14 @@ namespace UnityMcpBridge.Tools
             {
                 var profilers = new[]
                 {
-                    new { name = "CPU Usage", area = "CPU", enabled = ProfilerDriver.GetAreaEnabled(ProfilerArea.CPU) },
-                    new { name = "GPU Usage", area = "GPU", enabled = ProfilerDriver.GetAreaEnabled(ProfilerArea.GPU) },
-                    new { name = "Memory", area = "Memory", enabled = ProfilerDriver.GetAreaEnabled(ProfilerArea.Memory) },
-                    new { name = "Audio", area = "Audio", enabled = ProfilerDriver.GetAreaEnabled(ProfilerArea.Audio) },
-                    new { name = "Rendering", area = "Rendering", enabled = ProfilerDriver.GetAreaEnabled(ProfilerArea.Rendering) },
-                    new { name = "Physics", area = "Physics", enabled = ProfilerDriver.GetAreaEnabled(ProfilerArea.Physics) },
-                    new { name = "NetworkMessages", area = "NetworkMessages", enabled = ProfilerDriver.GetAreaEnabled(ProfilerArea.NetworkMessages) },
-                    new { name = "NetworkOperations", area = "NetworkOperations", enabled = ProfilerDriver.GetAreaEnabled(ProfilerArea.NetworkOperations) }
+                    new { name = "CPU Usage", area = "CPU", enabled = Profiler.enabled },
+                    new { name = "GPU Usage", area = "GPU", enabled = Profiler.enabled },
+                    new { name = "Memory", area = "Memory", enabled = Profiler.enabled },
+                    new { name = "Audio", area = "Audio", enabled = Profiler.enabled },
+                    new { name = "Rendering", area = "Rendering", enabled = Profiler.enabled },
+                    new { name = "Physics", area = "Physics", enabled = Profiler.enabled },
+                    new { name = "NetworkMessages", area = "NetworkMessages", enabled = Profiler.enabled },
+                    new { name = "NetworkOperations", area = "NetworkOperations", enabled = Profiler.enabled }
                 };
 
                 return JsonConvert.SerializeObject(new { profilers });
@@ -306,7 +313,7 @@ namespace UnityMcpBridge.Tools
                 {
                     exportTime = DateTime.Now.ToString(),
                     frameCount = ProfilerDriver.lastFrameIndex - ProfilerDriver.firstFrameIndex + 1,
-                    memoryUsage = Profiler.GetTotalAllocatedMemory(0),
+                    memoryUsage = Profiler.GetTotalAllocatedMemory(),
                     message = "Profile data export functionality requires custom implementation"
                 };
 
@@ -352,8 +359,8 @@ namespace UnityMcpBridge.Tools
                 {
                     name = snapshotName,
                     timestamp = DateTime.Now.ToString(),
-                    totalAllocated = Profiler.GetTotalAllocatedMemory(0),
-                    totalReserved = Profiler.GetTotalReservedMemory(0),
+                    totalAllocated = Profiler.GetTotalAllocatedMemory(),
+                    totalReserved = Profiler.GetTotalReservedMemory(),
                     monoHeapSize = Profiler.GetMonoHeapSizeLong(),
                     monoUsedSize = Profiler.GetMonoUsedSizeLong(),
                     tempAllocatorSize = Profiler.GetTempAllocatorSize()
@@ -377,8 +384,8 @@ namespace UnityMcpBridge.Tools
             {
                 var memoryUsage = new
                 {
-                    totalAllocated = Profiler.GetTotalAllocatedMemory(0),
-                    totalReserved = Profiler.GetTotalReservedMemory(0),
+                    totalAllocated = Profiler.GetTotalAllocatedMemory(),
+                    totalReserved = Profiler.GetTotalReservedMemory(),
                     monoHeapSize = Profiler.GetMonoHeapSizeLong(),
                     monoUsedSize = Profiler.GetMonoUsedSizeLong(),
                     tempAllocatorSize = Profiler.GetTempAllocatorSize(),
@@ -484,8 +491,7 @@ namespace UnityMcpBridge.Tools
                     vertices = UnityStats.vertices,
                     setPassCalls = UnityStats.setPassCalls,
                     shadowCasters = UnityStats.shadowCasters,
-                    visibleSkinnedMeshes = UnityStats.visibleSkinnedMeshes,
-                    visibleAnimations = UnityStats.visibleAnimations
+                    visibleSkinnedMeshes = UnityStats.visibleSkinnedMeshes
                 };
 
                 return JsonConvert.SerializeObject(renderStats);
@@ -519,7 +525,7 @@ namespace UnityMcpBridge.Tools
         {
             var recommendations = new List<string>();
 
-            var memoryMB = Profiler.GetTotalAllocatedMemory(0) / (1024 * 1024);
+            var memoryMB = Profiler.GetTotalAllocatedMemory() / (1024 * 1024);
             if (memoryMB > 500)
                 recommendations.Add("High memory usage detected. Consider optimizing textures and meshes.");
 

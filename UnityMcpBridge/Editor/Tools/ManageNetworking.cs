@@ -4,11 +4,17 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using System;
+using UnityMcpBridge.Editor.Helpers;
 
 namespace UnityMcpBridge.Tools
 {
     public static class ManageNetworking
     {
+        public static object HandleCommand(JObject parameters)
+        {
+            return HandleNetworkingCommand(parameters);
+        }
+
         public static JObject HandleNetworkingCommand(JObject parameters)
         {
             try
