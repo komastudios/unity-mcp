@@ -50,8 +50,67 @@ namespace UnityMcpBridge.Editor
 
         static UnityMcpBridge()
         {
-            Start();
+            // Handle domain reload cleanup
+            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeDomainReload;
+            AssemblyReloadEvents.afterAssemblyReload += OnAfterDomainReload;
+            
+            // Handle editor quitting
             EditorApplication.quitting += Stop;
+            
+            // Start the bridge after domain reload
+            EditorApplication.delayCall += () => {
+                Start();
+            };
+        }
+        
+        private static void OnBeforeDomainReload()
+        {
+            McpLogger.LogInfo("UnityMcpBridge: Cleaning up before domain reload");
+            CleanupBeforeDomainReload();
+        }
+        
+        private static void OnAfterDomainReload()
+        {
+            McpLogger.LogInfo("UnityMcpBridge: Restarting after domain reload");
+            // The static constructor will handle starting
+        }
+        
+        private static void CleanupBeforeDomainReload()
+        {
+            if (!isRunning)
+            {
+                return;
+            }
+            
+            try
+            {
+                // Force stop and dispose the listener
+                isRunning = false;
+                EditorApplication.update -= ProcessCommands;
+                
+                if (listener != null)
+                {
+                    listener.Stop();
+                    listener.Server.Dispose();
+                    listener = null;
+                }
+                
+                // Clear command queue
+                lock (lockObj)
+                {
+                    foreach (var kvp in commandQueue)
+                    {
+                        kvp.Value.tcs.TrySetCanceled();
+                    }
+                    commandQueue.Clear();
+                }
+                
+                McpLogger.LogInfo("UnityMcpBridge: Cleaned up successfully before domain reload");
+            }
+            catch (Exception ex)
+            {
+                McpLogger.LogError($"Error during domain reload cleanup: {ex.Message}");
+            }
         }
 
         public static void Start()
@@ -72,33 +131,57 @@ namespace UnityMcpBridge.Editor
                 return;
             }
 
-            try
+            // Try to start with retries if port is in use
+            int retryCount = 3;
+            int retryDelay = 500; // milliseconds
+            
+            for (int i = 0; i < retryCount; i++)
             {
-                // TODO: Add TLS encryption for secure communication between Python MCP server and Unity C# bridge
-                // Currently using unencrypted TCP listener which exposes commands and data on localhost:6400
-                // Consider using SslStream with self-signed certificates for local security
-                // This is important since the port accepts commands that can modify Unity project files
-                listener = new TcpListener(IPAddress.Loopback, UnityPort);
-                listener.Start();
-                isRunning = true;
-                McpLogger.LogInfo($"UnityMcpBridge started on port {UnityPort}.");
-                McpLogger.LogInfo($"Listening on: {IPAddress.Loopback}:{UnityPort}");
-                McpLogger.Log($"Waiting for MCP server connections...");
-                // Assuming ListenerLoop and ProcessCommands are defined elsewhere
-                Task.Run(ListenerLoop);
-                EditorApplication.update += ProcessCommands;
-            }
-            catch (SocketException ex)
-            {
-                if (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+                try
                 {
-                    McpLogger.LogError(
-                        $"Port {UnityPort} is already in use. Ensure no other instances are running or change the port."
-                    );
+                    // TODO: Add TLS encryption for secure communication between Python MCP server and Unity C# bridge
+                    // Currently using unencrypted TCP listener which exposes commands and data on localhost:6400
+                    // Consider using SslStream with self-signed certificates for local security
+                    // This is important since the port accepts commands that can modify Unity project files
+                    listener = new TcpListener(IPAddress.Loopback, UnityPort);
+                    
+                    // Set socket options to allow port reuse
+                    listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                    
+                    listener.Start();
+                    isRunning = true;
+                    McpLogger.LogInfo($"UnityMcpBridge started on port {UnityPort}.");
+                    McpLogger.LogInfo($"Listening on: {IPAddress.Loopback}:{UnityPort}");
+                    McpLogger.Log($"Waiting for MCP server connections...");
+                    // Assuming ListenerLoop and ProcessCommands are defined elsewhere
+                    Task.Run(ListenerLoop);
+                    EditorApplication.update += ProcessCommands;
+                    return; // Success, exit the method
                 }
-                else
+                catch (SocketException ex)
                 {
-                    McpLogger.LogError($"Failed to start TCP listener: {ex.Message}");
+                    if (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+                    {
+                        if (i < retryCount - 1)
+                        {
+                            McpLogger.LogWarning(
+                                $"Port {UnityPort} is in use. Retrying in {retryDelay}ms... (attempt {i + 2}/{retryCount})"
+                            );
+                            System.Threading.Thread.Sleep(retryDelay);
+                            continue;
+                        }
+                        else
+                        {
+                            McpLogger.LogError(
+                                $"Port {UnityPort} is already in use after {retryCount} attempts. Ensure no other instances are running or change the port."
+                            );
+                        }
+                    }
+                    else
+                    {
+                        McpLogger.LogError($"Failed to start TCP listener: {ex.Message}");
+                        break;
+                    }
                 }
             }
         }
