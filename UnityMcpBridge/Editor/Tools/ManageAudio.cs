@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityMcpBridge.Editor.Helpers;
+using System.Reflection;
 
 namespace UnityMcpBridge.Editor.Tools
 {
@@ -404,16 +405,13 @@ namespace UnityMcpBridge.Editor.Tools
                     }
                 }
 
-                // Create AudioMixer asset (AudioMixer is not a ScriptableObject)
+                ConstructorInfo ctor = typeof(AudioMixer).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+if (ctor == null) throw new Exception("No parameterless constructor found for AudioMixer");
+AudioMixer mixer = (AudioMixer)ctor.Invoke(null);
+                mixer.name = name;
+
                 string fullPath = $"{path}/{name}.mixer";
-                AudioMixer mixer = AssetDatabase.LoadAssetAtPath<AudioMixer>(fullPath);
-                if (mixer == null)
-                {
-                    // AudioMixer creation requires special handling
-                    // For now, we'll create a placeholder and log the requirement
-                    Debug.LogWarning("AudioMixer creation requires Unity's built-in audio mixer creation workflow");
-                    return Response.Error("AudioMixer creation must be done through Unity's Audio Mixer window");
-                }
+                AssetDatabase.CreateAsset(mixer, fullPath);
 
                 // Create default groups if specified
                 if (@params["groups"] != null)
@@ -746,7 +744,8 @@ namespace UnityMcpBridge.Editor.Tools
 
                 return Response.Success($"AudioListener added to '{gameObjectName}'.", new
                 {
-                    gameObjectName = gameObjectName
+                    gameObjectName = gameObjectName,
+                    velocityUpdateMode = audioListener.velocityUpdateMode.ToString()
                 });
             }
             catch (Exception e)
