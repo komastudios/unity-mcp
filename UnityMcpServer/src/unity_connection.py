@@ -188,30 +188,37 @@ class UnityConnection:
                 
                 # If response is very large, cache it and return a reference
                 if estimated_tokens > 15000:
-                    cache = get_cache('response')
-                    metadata = {
-                        "tool": command_type,
-                        "params": params,
-                        "size_bytes": len(result_str.encode('utf-8')),
-                        "estimated_tokens": estimated_tokens
-                    }
-                    cache_id = cache.add(data, metadata)
-                    
-                    logger.info(f"Large response cached with ID: {cache_id} (tokens: {estimated_tokens})")
-                    
-                    # Return a modified result that includes the cache ID
-                    return {
-                        "success": True,
-                        "cached": True,
-                        "cache_id": cache_id,
-                        "message": f"Response too large ({estimated_tokens} tokens). Data has been cached.",
-                        "data": {
-                            "cache_id": cache_id,
-                            "size_kb": len(result_str) // 1024,
-                            "estimated_tokens": estimated_tokens,
-                            "usage_hint": "Use fetch_cached_response tool to retrieve the data"
+                    try:
+                        cache = get_cache('response')
+                        metadata = {
+                            "tool": command_type,
+                            "params": params,
+                            "size_bytes": len(result_str.encode('utf-8')),
+                            "estimated_tokens": estimated_tokens
                         }
-                    }
+                        # Some environments may have a legacy cache without 'add'. Guard it.
+                        if hasattr(cache, 'add'):
+                            cache_id = cache.add(data, metadata)
+                            logger.info(f"Large response cached with ID: {cache_id} (tokens: {estimated_tokens})")
+                            # Return a modified result that includes the cache ID
+                            return {
+                                "success": True,
+                                "cached": True,
+                                "cache_id": cache_id,
+                                "message": f"Response too large ({estimated_tokens} tokens). Data has been cached.",
+                                "data": {
+                                    "cache_id": cache_id,
+                                    "size_kb": len(result_str) // 1024,
+                                    "estimated_tokens": estimated_tokens,
+                                    "usage_hint": "Use fetch_cached_response tool to retrieve the data"
+                                }
+                            }
+                        else:
+                            logger.warning("Response cache does not support 'add'; skipping caching and returning full data.")
+                    except Exception as ce:
+                        logger.warning(f"Caching large response failed: {str(ce)}. Returning full result instead.")
+                    # Fall through and return the normal (uncached) result
+
             
             if isinstance(result, dict) and "success" in result and "summary" in result:
                 # This is the new standard reply format, return it as-is

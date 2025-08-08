@@ -36,10 +36,10 @@ namespace UnityMcpBridge.Editor.Tools
                 if (capturedView == "scene")
                 {
                     var sv = SceneView.lastActiveSceneView;
-                    if (sv == null || sv.camera == null) return new { success = false, error = "No active Scene View found." };
+                    if (sv == null || sv.camera == null) return new { success = false, error = "No active Scene View found (SceneView.camera is null)." };
                     cam = sv.camera;
-                    capturedWidth = cam.pixelWidth;
-                    capturedHeight = cam.pixelHeight;
+                    capturedWidth = Mathf.Max(1, cam.pixelWidth);
+                    capturedHeight = Mathf.Max(1, cam.pixelHeight);
                 }
                 else
                 {
@@ -50,13 +50,21 @@ namespace UnityMcpBridge.Editor.Tools
                     capturedHeight = size.y;
                 }
 
+                // Fallbacks for invalid dimensions
+                if (capturedWidth <= 0 || capturedHeight <= 0)
+                {
+                    // Try Screen size first, then sensible defaults
+                    capturedWidth = Screen.width > 0 ? Screen.width : 1280;
+                    capturedHeight = Screen.height > 0 ? Screen.height : 720;
+                }
+
                 // Apply width/height if specified
                 if (width.HasValue || height.HasValue)
                 {
-                    if (width.HasValue && !height.HasValue) height = (int)(capturedHeight * (width.Value / (float)capturedWidth));
-                    else if (!width.HasValue && height.HasValue) width = (int)(capturedWidth * (height.Value / (float)capturedHeight));
-                    capturedWidth = width.Value;
-                    capturedHeight = height.Value;
+                    if (width.HasValue && !height.HasValue) height = (int)(capturedHeight * (width.Value / (float)Mathf.Max(1, capturedWidth)));
+                    else if (!width.HasValue && height.HasValue) width = (int)(capturedWidth * (height.Value / (float)Mathf.Max(1, capturedHeight)));
+                    capturedWidth = Mathf.Max(1, width ?? capturedWidth);
+                    capturedHeight = Mathf.Max(1, height ?? capturedHeight);
                 }
 
                 // Capture
@@ -118,13 +126,27 @@ namespace UnityMcpBridge.Editor.Tools
 
         private static Vector2Int GetGameViewSize()
         {
-            System.Type T = System.Type.GetType("UnityEditor.GameView,UnityEditor");
-            MethodInfo GetSizeOfMainGameView = T.GetMethod("GetSizeOfMainGameView", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            System.Object Res = GetSizeOfMainGameView.Invoke(null, null);
-            System.Type U = Res.GetType();
-            int width = (int)U.GetField("width").GetValue(Res);
-            int height = (int)U.GetField("height").GetValue(Res);
-            return new Vector2Int(width, height);
+            try
+            {
+                System.Type T = System.Type.GetType("UnityEditor.GameView,UnityEditor");
+                MethodInfo GetSizeOfMainGameView = T.GetMethod("GetSizeOfMainGameView", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                System.Object Res = GetSizeOfMainGameView.Invoke(null, null);
+                System.Type U = Res.GetType();
+                int width = (int)U.GetField("width").GetValue(Res);
+                int height = (int)U.GetField("height").GetValue(Res);
+                if (width <= 0 || height <= 0)
+                {
+                    width = Screen.width > 0 ? Screen.width : 1280;
+                    height = Screen.height > 0 ? Screen.height : 720;
+                }
+                return new Vector2Int(width, height);
+            }
+            catch
+            {
+                int w = Screen.width > 0 ? Screen.width : 1280;
+                int h = Screen.height > 0 ? Screen.height : 720;
+                return new Vector2Int(w, h);
+            }
         }
     }
 }

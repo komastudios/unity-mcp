@@ -795,11 +795,20 @@ namespace UnityMcpBridge.Editor.Tools
             if (string.IsNullOrEmpty(path))
                 return path;
             path = path.Replace('\\', '/'); // Normalize separators
-            if (!path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            // Avoid double prefix like "Assets/Assets/..." if caller already provided an Assets-relative path
+            if (path.Equals("Assets", StringComparison.OrdinalIgnoreCase))
+                return "Assets"; // exact root
+            if (path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
             {
-                return "Assets/" + path.TrimStart('/');
+                // Collapse any accidental double 'Assets/' (with or without trailing slash)
+                while (path.StartsWith("Assets/Assets", StringComparison.OrdinalIgnoreCase))
+                {
+                    string remainder = path.Substring("Assets/Assets".Length).TrimStart('/');
+                    path = string.IsNullOrEmpty(remainder) ? "Assets" : $"Assets/{remainder}";
+                }
+                return path.TrimEnd('/');
             }
-            return path;
+            return ("Assets/" + path.TrimStart('/')).TrimEnd('/');
         }
 
         /// <summary>

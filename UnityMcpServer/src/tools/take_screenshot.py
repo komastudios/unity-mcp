@@ -1,4 +1,4 @@
-from mcp.server.fastmcp import FastMCP, Context, Image
+from mcp.server.fastmcp import FastMCP, Context
 from typing import Dict, Any, Optional, Tuple
 from unity_connection import get_unity_connection
 import base64
@@ -54,8 +54,8 @@ def register_take_screenshot_tools(mcp: FastMCP):
             if not connection:
                 raise ConnectionError("Failed to get Unity connection. Is the editor running?")
             
-            # Send command to Unity
-            response = connection.send_command("take_screenshot", params)
+            # Send command to Unity (use registry handler name)
+            response = connection.send_command("HandleScreenshotTool", params)
             
             if not response.get("success"):
                 raise Exception(response.get("error", "Failed to take screenshot"))

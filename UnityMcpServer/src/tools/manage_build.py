@@ -65,7 +65,8 @@ def register_build_tools(server: Server):
             
             # Send command to Unity
             from ..core.unity_bridge import send_command_to_unity
-            result = await send_command_to_unity("manage_build", command_data)
+            # Unity bridge expects 'HandleManageBuild' as the type in the registry
+            result = await send_command_to_unity("HandleManageBuild", command_data)
             
             return [types.TextContent(
                 type="text",
